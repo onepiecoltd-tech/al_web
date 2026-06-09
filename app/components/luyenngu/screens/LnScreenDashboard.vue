@@ -46,7 +46,7 @@ const onlineFriends = FRIENDS.filter(f => f.status !== 'offline')
     <!-- challenge banner + weekly -->
     <div class="grid grid-cols-[1.6fr_1fr] gap-4 max-[1040px]:grid-cols-1">
       <LnBanner>
-        <LnBadge status class="bg-white/15 text-white!">Thách đấu trong ngày</LnBadge>
+        <LnBadge status class="bg-white/15 text-white">Thách đấu trong ngày</LnBadge>
         <h2 class="font-display font-bold text-[1.75rem] mt-3">Khánh thách đấu bạn — ELO 1.521</h2>
         <p class="text-white/70 font-body text-[0.9375rem] mt-1.5 max-w-[46ch]">Đối thủ trên cơ 39 điểm. Thắng trận này để leo lên hạng Bạch Kim. Đọc to để AI chấm độ khớp.</p>
         <div class="flex gap-4 mt-[18px]">

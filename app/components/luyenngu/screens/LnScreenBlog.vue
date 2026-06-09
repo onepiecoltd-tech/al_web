@@ -75,7 +75,7 @@ const comments = [
 
     <div class="relative overflow-hidden bg-ink text-white rounded-xl-ln p-8 cursor-pointer before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(120%_130%_at_100%_0%,rgba(220,74,51,.36),transparent_55%)]" @click="open = 0">
       <div class="relative">
-        <LnBadge status class="bg-white/15 text-white!">{{ BLOG[0].cat }}</LnBadge>
+        <LnBadge status class="bg-white/15 text-white">{{ BLOG[0].cat }}</LnBadge>
         <h2 class="mt-3 font-display font-extrabold text-[1.9rem] max-w-[20ch]">{{ BLOG[0].title }}</h2>
         <p class="text-white/70 font-body text-[0.9375rem] mt-1.5 max-w-[52ch]">{{ BLOG[0].excerpt }}</p>
         <div class="flex items-center gap-2.5 mt-4 text-white/80 text-xs">

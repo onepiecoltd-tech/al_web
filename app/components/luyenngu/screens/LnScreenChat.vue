@@ -56,7 +56,7 @@ function openChat(i: number) { active.value = i; view.value = 'chat' }
       <div class="grid grid-cols-[1fr_300px] flex-1 min-h-0 max-[720px]:grid-cols-1">
         <div class="bg-ink relative grid grid-cols-2 gap-0.5 p-0.5">
           <span class="absolute top-3 left-3 z-[2] flex gap-2 items-center">
-            <LnBadge status class="bg-error text-white!">● LIVE</LnBadge>
+            <LnBadge status class="bg-error text-white">● LIVE</LnBadge>
             <span class="inline-flex items-center bg-black/50 text-white rounded-[5px] px-2 py-[3px] text-xs font-bold"><LnIcon name="eye" :size="12" class="mr-1" />342</span>
           </span>
           <button type="button" class="absolute top-2.5 right-2.5 z-[2] grid place-items-center w-9 h-9 rounded-md-ln text-white hover:bg-white/10" @click="view = 'chat'"><LnIcon name="x" :size="20" /></button>

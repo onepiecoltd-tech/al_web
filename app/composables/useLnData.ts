@@ -56,6 +56,57 @@ export const NOTIFS: Notif[] = [
   { type: 'friend', ic: 'user-plus', text: 'Linh đã chấp nhận lời mời kết bạn', when: 'hôm qua', tone: 'reu' },
 ]
 
+// ── Admin (ported from app/admin.jsx) ───────────────────────────
+
+export interface AdminUser {
+  name: string; handle: string; email: string; plan: 'Pro' | 'Free'
+  elo: number; status: 'active' | 'banned'; joined: string
+  role: 'user' | 'mod'; color: AvatarColor
+}
+export interface AdminExam {
+  name: string; type: string; q: number; by: string
+  state: 'published' | 'review' | 'draft'; date: string
+}
+export interface AdminReport {
+  what: string; who: string; type: string; when: string; sev: 'err' | 'warn'
+}
+export interface AdminTxn {
+  user: string; kind: string; amt: string; vnd: string
+  method: string; when: string; ok: boolean
+}
+
+export const A_USERS: AdminUser[] = [
+  { name: 'Minh Anh', handle: '@minhanh', email: 'minhanh@email.com', plan: 'Pro', elo: 1482, status: 'active', joined: '03/2026', role: 'user', color: 'son' },
+  { name: 'Khánh', handle: '@khanh', email: 'khanh@email.com', plan: 'Pro', elo: 1521, status: 'active', joined: '01/2026', role: 'user', color: 'reu' },
+  { name: 'Thu Hà', handle: '@thuha', email: 'thuha@email.com', plan: 'Free', elo: 1455, status: 'active', joined: '02/2026', role: 'mod', color: 'son' },
+  { name: 'Linh', handle: '@linh', email: 'linh@email.com', plan: 'Free', elo: 1402, status: 'active', joined: '04/2026', role: 'user', color: 'ink' },
+  { name: 'Nam', handle: '@nam', email: 'nam@email.com', plan: 'Free', elo: 1310, status: 'banned', joined: '05/2026', role: 'user', color: 'gold' },
+  { name: 'Phúc', handle: '@phuc', email: 'phuc@email.com', plan: 'Free', elo: 1288, status: 'active', joined: '05/2026', role: 'user', color: 'reu' },
+  { name: 'Quỳnh', handle: '@quynh', email: 'quynh@email.com', plan: 'Pro', elo: 1390, status: 'active', joined: '04/2026', role: 'user', color: 'son' },
+]
+
+export const A_EXAMS: AdminExam[] = [
+  { name: 'Cambridge IELTS 18 — Full', type: 'IELTS', q: 200, by: 'Admin', state: 'published', date: '02/06' },
+  { name: 'TOEIC ETS 2024 — Test 5', type: 'TOEIC', q: 200, by: 'Admin', state: 'published', date: '28/05' },
+  { name: 'Academic Word List drills', type: 'Từ vựng', q: 120, by: 'Thu Hà', state: 'review', date: 'hôm nay' },
+  { name: 'TOEFL Reading set A', type: 'TOEFL', q: 60, by: 'Khánh', state: 'review', date: 'hôm qua' },
+  { name: 'IELTS Speaking forecast Q2', type: 'IELTS', q: 45, by: 'Admin', state: 'draft', date: '30/05' },
+]
+
+export const A_REPORTS: AdminReport[] = [
+  { what: 'Bình luận xúc phạm trong bài "TOEIC 900+"', who: 'Nam', type: 'Bình luận', when: '12 phút', sev: 'err' },
+  { what: 'Spam link trong chat phòng nhóm', who: 'ẩn danh', type: 'Chat', when: '1 giờ', sev: 'warn' },
+  { what: 'Nội dung không phù hợp trong livestream', who: 'Phúc', type: 'Livestream', when: '3 giờ', sev: 'err' },
+  { what: 'Bài blog nghi sao chép', who: 'Quỳnh', type: 'Blog', when: 'hôm qua', sev: 'warn' },
+]
+
+export const A_TXNS: AdminTxn[] = [
+  { user: 'Minh Anh', kind: 'Nạp xu', amt: '+600 xu', vnd: '₫50.000', method: 'PayOS', when: '21:14', ok: true },
+  { user: 'Khánh', kind: 'Gói Pro', amt: '30 ngày', vnd: '₫50.000', method: 'PayOS', when: '20:02', ok: true },
+  { user: 'Quỳnh', kind: 'Nạp xu', amt: '+1.300 xu', vnd: '₫100.000', method: 'PayOS', when: '18:40', ok: true },
+  { user: 'Nam', kind: 'Nạp xu', amt: '+230 xu', vnd: '₫20.000', method: 'PayOS', when: '16:11', ok: false },
+]
+
 // Shared reactive app state (coins, auth, messenger overlay, offline).
 const coins = ref(ME.coins)
 const authed = ref(true)

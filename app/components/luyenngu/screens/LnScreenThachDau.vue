@@ -81,7 +81,7 @@ const rankColor = (i: number) => ['text-gold-deep', 'text-[#8d8d8d]', 'text-[#a9
     <div class="flex flex-col gap-4">
       <div class="relative overflow-hidden bg-ink text-white rounded-xl-ln p-8 before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(220,74,51,.32),transparent_60%)]">
         <div class="relative">
-          <LnBadge status class="bg-white/15 text-white!">Hạng của bạn</LnBadge>
+          <LnBadge status class="bg-white/15 text-white">Hạng của bạn</LnBadge>
           <div class="flex items-center gap-[18px] mt-4">
             <div class="w-[72px] h-[72px] rounded-full bg-gold grid place-items-center font-display font-extrabold text-[1.6rem] text-white">🏆</div>
             <div><div class="font-display font-extrabold text-[2.2rem] text-white">1.482</div><div class="text-white/65 font-body text-[0.9375rem]">Hạng Vàng · #14 tuần này</div></div>

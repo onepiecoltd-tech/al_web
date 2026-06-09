@@ -56,6 +56,17 @@
 .ln-mic-rec { animation: ln-pulse 1.4s infinite; }
 
 /* ============================================================
+   ADMIN — status pill with a leading state dot (::before).
+   Awkward as a Tailwind utility, so kept here. Used in tables.
+   ============================================================ */
+.ln-spill { display: inline-flex; align-items: center; gap: 6px; font: 700 .72rem var(--font-body); padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
+.ln-spill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
+.ln-spill.ok { background: var(--success-bg); color: var(--success); } .ln-spill.ok::before { background: var(--success); }
+.ln-spill.warn { background: var(--warning-bg); color: var(--warning); } .ln-spill.warn::before { background: var(--warning); }
+.ln-spill.err { background: var(--error-bg); color: var(--error); } .ln-spill.err::before { background: var(--error); }
+.ln-spill.mut { background: var(--paper-3); color: var(--ink-3); } .ln-spill.mut::before { background: var(--ink-4); }
+
+/* ============================================================
    YAHOO / XP MESSENGER SUB-THEME (scoped under .xp)
    Tahoma, purple buddy list, classic blue window chrome.
    Faithful retro skin — intentionally pure CSS.

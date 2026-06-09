@@ -25,7 +25,7 @@ const rankColor = (i: number) => ['text-gold-deep', 'text-[#8d8d8d]', 'text-[#a9
       <LnBanner>
         <div class="flex items-start justify-between gap-3">
           <div>
-            <LnBadge status class="bg-error text-white!">● Đang diễn ra</LnBadge>
+            <LnBadge status class="bg-error text-white">● Đang diễn ra</LnBadge>
             <h2 class="font-display font-bold text-[1.75rem] mt-2.5">Vòng đấu phát âm</h2>
             <p class="text-white/70 font-body text-[0.9375rem] mt-1">Đọc to câu hiển thị — điểm cập nhật realtime.</p>
           </div>
