@@ -22,6 +22,7 @@ export const NAV_PATH: Record<string, string> = {
   'luyen-noi': '/luyen-noi',
   'hoc-nhom': '/hoc-nhom',
   'thach-dau': '/thach-dau',
+  'gap-go': '/gap-go',
   'ban-be': '/ban-be',
   blog: '/blog',
   'ho-so': '/ho-so',

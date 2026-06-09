@@ -5,11 +5,12 @@ import { useLnCtx } from '~/composables/useLnCtx'
 
 const ctx = useLnCtx()
 const topup = ref(false)
-const settings = reactive({ show_online: true, allow_stranger_challenge: true, notify_on_friend_live: false })
+const settings = reactive({ show_online: true, allow_stranger_challenge: true, allow_stranger_chat: false, notify_on_friend_live: false })
 
 const settingsRows: [keyof typeof settings, string, string][] = [
   ['show_online', 'Hiện đang online', 'Bạn bè thấy chấm xanh trạng thái của bạn.'],
   ['allow_stranger_challenge', 'Cho người lạ thách đấu', 'Cho phép ghép cặp ngẫu nhiên đến với bạn.'],
+  ['allow_stranger_chat', 'Gặp gỡ (người lạ) · 18+', 'Cho phép ghép & trò chuyện với người lạ. Vị trí chỉ ở mức tỉnh/thành.'],
   ['notify_on_friend_live', 'Thông báo khi bạn bè livestream', 'Nhận thông báo go-live từ bạn bè.'],
 ]
 

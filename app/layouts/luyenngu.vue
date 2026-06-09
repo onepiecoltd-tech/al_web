@@ -10,13 +10,15 @@ const NAV = [
   { id: 'luyen-noi', label: 'Luyện nói', icon: 'mic' },
   { id: 'hoc-nhom', label: 'Học nhóm', icon: 'users' },
   { id: 'thach-dau', label: 'Thách đấu', icon: 'swords', dot: 1 },
+  { id: 'gap-go', label: 'Gặp gỡ', icon: 'shuffle' },
   { id: 'ban-be', label: 'Bạn bè', icon: 'message-circle', dot: 3 },
   { id: 'blog', label: 'Blog', icon: 'newspaper' },
   { id: 'ho-so', label: 'Hồ sơ', icon: 'user' },
 ]
 const TITLES: Record<string, string> = {
   '/': 'Trang chủ', '/luyen-de': 'Luyện đề', '/luyen-noi': 'Luyện nói',
-  '/hoc-nhom': 'Học nhóm', '/thach-dau': 'Thách đấu', '/ban-be': 'Bạn bè & Chat',
+  '/hoc-nhom': 'Học nhóm', '/thach-dau': 'Thách đấu', '/gap-go': 'Gặp gỡ',
+  '/ban-be': 'Bạn bè & Chat',
   '/blog': 'Blog', '/ho-so': 'Hồ sơ',
 }
 
