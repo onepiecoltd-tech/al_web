@@ -1,0 +1,96 @@
+/* ============================================================
+   LuyệnNgữ — Design System Tokens
+   Codename: "Sổ tay" (notebook)
+   Vibe: giấy ấm · đỏ son · xanh rêu · Plus Jakarta Sans + Be Vietnam Pro
+   Fonts are imported at the top of main.css (must precede CSS rules).
+   ============================================================ */
+
+:root {
+  /* ---- Paper neutrals (warm, layered) ---- */
+  --paper-bg:   #FAF5EA;  /* page background */
+  --paper-0:    #FFFEFA;  /* highest / pop surface */
+  --paper-1:    #FCF8EF;  /* default card */
+  --paper-2:    #F4EEDE;  /* inset / sunken */
+  --paper-3:    #ECE3CF;  /* deeper inset */
+  --line:       #E4DAC4;  /* 1px hairline border */
+  --line-soft:  #EFE7D6;  /* faint divider */
+  --line-strong:#D4C6A8;  /* emphasized border */
+
+  /* ---- Ink (warm near-black text ramp) ---- */
+  --ink:    #2A2520;  /* primary text */
+  --ink-2:  #5B5347;  /* secondary text */
+  --ink-3:  #877E6E;  /* muted / metadata */
+  --ink-4:  #B0A48C;  /* faint / placeholder / disabled */
+
+  /* ---- Đỏ son (vermillion seal red — PRIMARY accent) ---- */
+  --son:        #C23B2B;  /* primary CTA, links, active */
+  --son-deep:   #9B2C1F;  /* hover / press */
+  --son-bright: #DC4A33;  /* the stamp ink, vivid moments */
+  --son-soft:   #F7E5DF;  /* tint background */
+  --son-line:   #E7C5BA;  /* tint border */
+
+  /* ---- Xanh rêu (moss green — SECONDARY accent) ---- */
+  --reu:       #586B3A;  /* secondary actions, success-ish chrome */
+  --reu-deep:  #41522A;
+  --reu-soft:  #E8ECDA;
+  --reu-line:  #CBD3AD;
+
+  /* ---- Vàng đồng (gold — coins / xu, tertiary) ---- */
+  --gold:      #B5882E;
+  --gold-deep: #8C681F;
+  --gold-soft: #F4E9C9;
+  --gold-line: #E4D199;
+
+  /* ---- Semantic ---- */
+  --success:    #4F7A3E;  --success-bg: #E7EFDB;
+  --error:      #B5362A;  --error-bg:   #F7E1DC;
+  --warning:    #B5882E;  --warning-bg: #F6EBCB;
+  --info:       #4A6670;  --info-bg:    #E3EBED;
+
+  /* ---- Typography ---- */
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-body:    'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+  --font-mono:    'IBM Plex Mono', ui-monospace, monospace;
+
+  /* type ramp: size / line-height / weight  */
+  --t-display-xl: 800 3.25rem/1.05 var(--font-display);  /* 52 hero */
+  --t-display-lg: 800 2.5rem/1.1  var(--font-display);   /* 40 */
+  --t-headline:   700 1.75rem/1.18 var(--font-display);  /* 28 */
+  --t-title:      700 1.3125rem/1.3 var(--font-display); /* 21 */
+  --t-subtitle:   700 1rem/1.4 var(--font-body);         /* 16 */
+  --t-body-lg:    400 1.0625rem/1.6 var(--font-body);    /* 17 */
+  --t-body:       400 0.9375rem/1.6 var(--font-body);    /* 15 */
+  --t-label:      600 0.8125rem/1.35 var(--font-body);   /* 13 */
+  --t-caption:    500 0.75rem/1.4 var(--font-body);      /* 12 */
+
+  /* ---- Spacing (4px base) ---- */
+  --sp-1: 2px;  --sp-2: 4px;  --sp-3: 8px;  --sp-4: 12px;
+  --sp-5: 16px; --sp-6: 20px; --sp-7: 24px; --sp-8: 32px;
+  --sp-9: 40px; --sp-10: 48px; --sp-12: 64px; --sp-16: 96px;
+
+  /* ---- Radius ---- */
+  --r-sm: 5px;  --r-md: 9px;  --r-lg: 13px; --r-xl: 18px; --r-2xl: 24px; --r-full: 999px;
+
+  /* ---- Shadow (restrained, warm-tinted) ---- */
+  --sh-sm:    0 1px 2px rgba(42,37,32,.07);
+  --sh-card:  0 2px 10px rgba(42,37,32,.07);
+  --sh-float: 0 10px 30px rgba(42,37,32,.14);
+  --sh-stamp: 0 1px 0 rgba(155,44,31,.10);
+
+  /* ---- Misc ---- */
+  --ease:    cubic-bezier(.2,0,0,1);
+  --dur-tap: 140ms;
+  --dur-sheet: 220ms;
+  --maxw: 1120px;
+}
+
+/* ===== Base (scoped so it doesn't fight Tailwind preflight) ===== */
+body.luyenngu {
+  font: var(--t-body);
+  color: var(--ink);
+  background: var(--paper-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+body.luyenngu ::selection { background: var(--son-soft); color: var(--son-deep); }
+body.luyenngu a { color: var(--son); text-decoration: none; }

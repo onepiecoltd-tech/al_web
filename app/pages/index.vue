@@ -1,27 +1,13 @@
 <script setup lang="ts">
+import LnScreenDashboard from '~/components/luyenngu/screens/LnScreenDashboard.vue'
+
+definePageMeta({ layout: 'luyenngu' })
 useSeoMeta({
-  title: 'Learning Languages',
-  description: 'Learn languages effectively with our platform.',
+  title: 'LuyệnNgữ — Luyện thi như một cuộc đấu',
+  description: 'Tải nguồn đề của bạn, để AI giải & sinh đề, rồi thách đấu bạn bè và người lạ để giữ nhịp mỗi ngày.',
 })
 </script>
 
 <template>
-  <main class="container mx-auto flex min-h-screen flex-col items-center justify-center gap-8 p-8">
-    <div class="text-center space-y-4">
-      <h1 class="text-4xl font-bold tracking-tight">
-        Learning Languages
-      </h1>
-      <p class="text-muted-foreground text-lg max-w-md">
-        A platform built with Nuxt 4, shadcn-vue, and Tailwind CSS.
-      </p>
-    </div>
-
-    <div class="flex flex-wrap gap-3 justify-center">
-      <Button>Get Started</Button>
-      <Button variant="outline">Learn More</Button>
-      <Button variant="secondary">Secondary</Button>
-      <Button variant="destructive">Destructive</Button>
-      <Button variant="ghost">Ghost</Button>
-    </div>
-  </main>
+  <LnScreenDashboard />
 </template>

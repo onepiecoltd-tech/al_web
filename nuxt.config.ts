@@ -14,6 +14,13 @@ export default defineNuxtConfig({
     'shadcn-nuxt',
   ],
 
+  components: [
+    // Luyện Ngữ primitives/screens: register without the path prefix so
+    // <LnBtn>, <LnIcon>, … resolve regardless of nesting depth.
+    { path: '~/components/luyenngu', pathPrefix: false },
+    '~/components',
+  ],
+
   vite: {
     plugins: [tailwindcss()],
   },

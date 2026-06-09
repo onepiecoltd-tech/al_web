@@ -1,0 +1,108 @@
+<script setup lang="ts">
+import { cn } from '~/lib/utils'
+import { BLOG, ME } from '~/composables/useLnData'
+import { useLnCtx } from '~/composables/useLnCtx'
+
+const ctx = useLnCtx()
+const open = ref<number | null>(null)
+const cats = ['Tất cả', 'IELTS', 'TOEIC', 'Phương pháp', 'Câu chuyện']
+const post = computed(() => (open.value !== null ? BLOG[open.value] : null))
+
+const comments = [
+  { n: 'Khánh', c: 'reu' as const, t: 'Khung 4 ý cực hữu ích, mình áp dụng thử band tăng hẳn. Ai muốn so tài Part 2 không? 😎' },
+  { n: 'Linh', c: 'ink' as const, t: 'Phần từ nối tự nhiên là thứ mình hay quên. Cảm ơn tác giả!' },
+]
+</script>
+
+<template>
+  <!-- POST VIEW -->
+  <div v-if="post" class="max-w-[720px] mx-auto">
+    <LnBtn variant="ghost" size="sm" icon="chevron-left" @click="open = null">Quay lại Blog</LnBtn>
+    <span class="block mt-4 text-xs font-extrabold uppercase tracking-[0.12em] text-son">{{ post.cat }}</span>
+    <h1 class="font-display font-extrabold text-[2.5rem] my-2 mb-3.5 tracking-[-0.015em]">{{ post.title }}</h1>
+    <div class="flex items-center gap-3 py-[11px]">
+      <LnAvatar :name="post.author" color="son" :size="40" />
+      <div class="flex-1"><div class="font-body text-base font-semibold">{{ post.author }}</div><div class="text-xs text-ink-3 mt-px">{{ post.date }} · {{ post.reads }} lượt đọc</div></div>
+      <LnBtn variant="outline" size="sm" icon="user-plus">Theo dõi</LnBtn>
+    </div>
+    <div class="h-[200px] rounded-xl-ln bg-son-soft grid place-items-center my-4"><LnIcon name="lightbulb" :size="44" class="text-son" /></div>
+    <div class="font-body text-[1.0625rem] text-ink-2 leading-[1.75]">
+      <p class="mb-4">{{ post.excerpt }}</p>
+      <p class="mb-4">Bí quyết nằm ở việc coi mỗi gạch đầu dòng như một "chặng" của câu chuyện: mở đầu bằng bối cảnh, dẫn qua hành động, rồi chốt bằng cảm xúc hoặc bài học. Khi luyện, hãy bấm giờ 2 phút và thu âm — nghe lại để bắt những chỗ ngập ngừng.</p>
+      <p>Quan trọng nhất: đừng học thuộc. Hãy luyện với cue card forecast mỗi ngày, rồi thách đấu bạn bè để giữ áp lực thật.</p>
+    </div>
+
+    <div class="mt-6 flex items-center gap-3.5 bg-son-soft border border-son-line rounded-lg-ln p-4">
+      <LnIcon name="swords" :size="24" class="text-son" />
+      <div class="flex-1"><div class="font-body text-base font-bold">Sẵn sàng thử sức?</div><div class="text-xs text-ink-3 mt-px">Vào thách đấu Speaking và đo band thật của bạn.</div></div>
+      <LnBtn variant="primary" icon="swords" @click="ctx.go('thach-dau')">Vào thách đấu</LnBtn>
+    </div>
+
+    <div class="mt-7">
+      <b class="font-display text-[1.3125rem] font-bold">Bình luận ({{ post.comments }})</b>
+      <div class="flex gap-2.5 mt-3.5">
+        <LnAvatar :name="ME.name" color="son" :size="38" />
+        <input class="flex-1 px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] placeholder:text-ink-4 focus:outline-none focus:border-son" placeholder="Viết bình luận…">
+        <LnBtn variant="primary">Gửi</LnBtn>
+      </div>
+      <div class="mt-[18px]">
+        <div v-for="(cm, i) in comments" :key="i" class="flex gap-3 py-3.5 border-b border-line-soft last:border-0">
+          <LnAvatar :name="cm.n" :color="cm.c" :size="38" />
+          <div class="flex-1">
+            <div class="flex items-center justify-between">
+              <span class="font-body text-[0.8125rem] font-semibold">{{ cm.n }}</span>
+              <LnBtn variant="ghost" size="sm" class="!px-2.5 !py-1" @click="ctx.go('thach-dau')">⚔️ Thách đấu</LnBtn>
+            </div>
+            <p class="font-body text-[0.9375rem] text-ink-2 mt-1">{{ cm.t }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIST VIEW -->
+  <div v-else class="flex flex-col gap-5">
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex flex-wrap gap-2">
+        <span
+          v-for="(c, i) in cats"
+          :key="c"
+          :class="cn('font-body text-[0.8125rem] rounded-full px-3.5 py-[7px] border cursor-pointer', i === 0 ? 'bg-son-soft border-son-line text-son-deep font-bold' : 'border-line-strong bg-paper-0 text-ink-2')"
+        >{{ c }}</span>
+      </div>
+      <LnBtn variant="outline" icon="pen-line">Viết bài</LnBtn>
+    </div>
+
+    <div class="relative overflow-hidden bg-ink text-white rounded-xl-ln p-8 cursor-pointer before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(120%_130%_at_100%_0%,rgba(220,74,51,.36),transparent_55%)]" @click="open = 0">
+      <div class="relative">
+        <LnBadge status class="bg-white/15 text-white!">{{ BLOG[0].cat }}</LnBadge>
+        <h2 class="mt-3 font-display font-extrabold text-[1.9rem] max-w-[20ch]">{{ BLOG[0].title }}</h2>
+        <p class="text-white/70 font-body text-[0.9375rem] mt-1.5 max-w-[52ch]">{{ BLOG[0].excerpt }}</p>
+        <div class="flex items-center gap-2.5 mt-4 text-white/80 text-xs">
+          <LnAvatar :name="BLOG[0].author" color="son" :size="26" /> {{ BLOG[0].author }} · {{ BLOG[0].date }} · {{ BLOG[0].reads }} lượt đọc
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4 max-[1040px]:grid-cols-2 max-[720px]:grid-cols-1">
+      <button
+        v-for="(p, i) in BLOG.slice(1)"
+        :key="p.title"
+        type="button"
+        class="text-left cursor-pointer flex flex-col gap-2.5 border border-line bg-paper-0 rounded-lg-ln p-4 transition-colors hover:bg-paper-2"
+        @click="open = i + 1"
+      >
+        <div class="h-[120px] rounded-md-ln grid place-items-center" :class="i % 2 ? 'bg-reu-soft' : 'bg-son-soft'">
+          <LnIcon :name="i % 2 ? 'book-open' : 'lightbulb'" :size="30" :class="i % 2 ? 'text-reu' : 'text-son'" />
+        </div>
+        <span class="text-xs font-extrabold uppercase tracking-[0.12em] text-son">{{ p.cat }}</span>
+        <div class="font-body text-base font-bold leading-snug">{{ p.title }}</div>
+        <div class="text-xs text-ink-3 line-clamp-2">{{ p.excerpt }}</div>
+        <div class="flex items-center justify-between mt-auto pt-2">
+          <span class="text-ink-3 text-xs">{{ p.author }} · {{ p.date }}</span>
+          <span class="text-ink-3 text-xs flex items-center gap-1"><LnIcon name="message-circle" :size="13" />{{ p.comments }}</span>
+        </div>
+      </button>
+    </div>
+  </div>
+</template>

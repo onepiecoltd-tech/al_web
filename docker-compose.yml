@@ -1,0 +1,16 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: luyenngu-web
+    container_name: luyenngu-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      NITRO_PORT: "3000"
+      NITRO_HOST: "0.0.0.0"
+      # Build/runtime secret read from .env (or the shell env)
+      NUXT_OG_IMAGE_SECRET: ${NUXT_OG_IMAGE_SECRET}

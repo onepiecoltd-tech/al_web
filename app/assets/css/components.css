@@ -1,0 +1,114 @@
+/* ============================================================
+   LuyệnNgữ — residual CSS that Tailwind utilities can't express
+   cleanly. Everything else lives as Tailwind classes inside the
+   Vue components under app/components/luyenngu/.
+
+   What's here:
+   - the Yahoo/XP Messenger retro skin (deliberate pure-CSS theme)
+   - a few pseudo-element decorations (seal, cue accent)
+   - the shimmer skeleton fill
+   Requires tokens.css.
+   ============================================================ */
+
+/* paper grain — a hint, never loud */
+.paper-grain {
+  background-image: radial-gradient(rgba(120, 100, 70, .035) 1px, transparent 1px);
+  background-size: 4px 4px;
+}
+
+/* skeleton shimmer fill (gradient + animation → keep as CSS) */
+.ln-skeleton {
+  background: linear-gradient(90deg, var(--paper-2) 25%, var(--paper-3) 37%, var(--paper-2) 63%);
+  background-size: 200% 100%;
+  animation: ln-shimmer 1.4s ease-in-out infinite;
+}
+
+/* brand seal (con dấu đỏ) — pseudo-element double border */
+.ln-seal {
+  border: 2.5px solid var(--son);
+  color: var(--son);
+  font-family: var(--font-display);
+  font-weight: 800;
+  transform: rotate(-7deg);
+  box-shadow: inset 0 0 0 1px rgba(194, 59, 43, .25);
+}
+.ln-seal::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(194, 59, 43, .3);
+  border-radius: 7px;
+}
+
+/* speaking cue-card left accent bar */
+.ln-cue::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 22px;
+  bottom: 22px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--son);
+}
+
+/* recording mic pulse */
+.ln-mic-rec { animation: ln-pulse 1.4s infinite; }
+
+/* ============================================================
+   YAHOO / XP MESSENGER SUB-THEME (scoped under .xp)
+   Tahoma, purple buddy list, classic blue window chrome.
+   Faithful retro skin — intentionally pure CSS.
+   ============================================================ */
+.xp { font-family: Tahoma, 'Segoe UI', sans-serif; color: #000; }
+.xp-window { background: #ECE9D8; border: 1px solid #0A246A; border-radius: 8px 8px 4px 4px; box-shadow: var(--sh-float); overflow: hidden; width: 280px; }
+.xp-title { display: flex; align-items: center; gap: 6px; padding: 4px 6px; color: #fff; font: 700 12px Tahoma; text-shadow: 0 1px 1px rgba(0,0,0,.4);
+  background: linear-gradient(#0a99f5 0, #0356d6 8%, #0b54c9 40%, #0848b8 88%, #0a3aa0 100%); }
+.xp-title .x-logo { width: 16px; height: 16px; border-radius: 3px; background: #ffd23d; display: grid; place-items: center; font-size: 11px; }
+.xp-title .x-btns { margin-left: auto; display: flex; gap: 3px; }
+.xp-title .x-btns i { width: 17px; height: 16px; border: 1px solid #fff; border-radius: 3px; background: linear-gradient(#5b9ef5,#1e5fd0); display: grid; place-items: center; font-style: normal; font-size: 10px; color: #fff; font-weight: 700; cursor: pointer; }
+.xp-title .x-btns i.close { background: linear-gradient(#f59a7e,#d6442a); }
+.xp-body { padding: 8px; }
+
+.xp-buddy { width: 230px; }
+.xp-buddy .xp-myrow { background: linear-gradient(#7e57c2,#4b2c8f); color: #fff; padding: 7px 9px; display: flex; align-items: center; gap: 8px; }
+.xp-buddy .xp-myrow .me-nm { font: 700 12px Tahoma; }
+.xp-buddy .xp-myrow .me-st { font: 11px Tahoma; opacity: .85; }
+.xp-list { background: #fff; border: 1px solid #7e57c2; margin: 6px; border-radius: 2px; padding: 2px 0; }
+.xp-grp { font: 700 11px Tahoma; color: #4b2c8f; padding: 4px 8px; display: flex; align-items: center; gap: 5px; }
+.xp-grp::before { content: "−"; font-weight: 700; }
+.xp-bud { display: flex; align-items: center; gap: 7px; padding: 3px 8px 3px 20px; font: 11px Tahoma; cursor: pointer; }
+.xp-bud:hover { background: #d9e8ff; }
+.xp-bud.off { color: #999; }
+.xp-bud .dot { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.xp-bud .dot.on { background: #3fae3f; }
+.xp-bud .dot.busy { background: #e34234; }
+.xp-bud .dot.away { background: #f5a623; }
+.xp-bud .dot.off { background: #bbb; }
+
+.xp-chat { width: 300px; }
+.xp-chat .xp-log { background: #fff; border: 1px solid #888; height: 130px; padding: 7px; font: 11px/1.5 Tahoma; overflow: hidden; }
+.xp-chat .xp-log .ln { margin-bottom: 3px; }
+.xp-chat .xp-log .ln b.them { color: #c0186a; }
+.xp-chat .xp-log .ln b.me { color: #1561c0; }
+.xp-chat .xp-log .ln.buzz { color: #d6442a; font-weight: 700; font-style: italic; }
+.xp-toolbar { display: flex; gap: 3px; padding: 4px 0; }
+.xp-toolbar i { width: 22px; height: 20px; border: 1px solid #c5c1ab; border-radius: 3px; background: #fff; display: grid; place-items: center; font-style: normal; font-size: 12px; cursor: pointer; }
+.xp-toolbar i:hover { background: #d9e8ff; }
+.xp-toolbar i.buzz { margin-left: auto; background: #ffe9a8; border-color: #d8b84a; font-weight: 700; color: #8a5a00; width: auto; padding: 0 8px; font-size: 11px; }
+.xp-entry { background: #fff; border: 1px solid #888; height: 42px; padding: 6px; font: 11px Tahoma; color: #888; }
+.xp-send { display: flex; justify-content: flex-end; margin-top: 5px; }
+.xp-send button { font: 700 11px Tahoma; padding: 4px 18px; border: 1px solid #0a246a; border-radius: 3px; background: linear-gradient(#fefefe,#dcd7c4); cursor: pointer; }
+.smiley { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 38% 35%, #ffe98a, #ffc107 70%); border: 1px solid #c99a00; display: inline-grid; place-items: center; flex: none; position: relative; }
+.smiley::after { content: ""; position: absolute; width: 9px; height: 5px; border: 1.5px solid #6b4b00; border-top: 0; border-radius: 0 0 9px 9px; top: 10px; }
+.smiley i { position: absolute; top: 6px; width: 2.5px; height: 2.5px; border-radius: 50%; background: #6b4b00; }
+.smiley i.l { left: 6px; } .smiley i.r { right: 6px; }
+.emoji-board { display: grid; grid-template-columns: repeat(6,1fr); gap: 3px; background: #fff; border: 1px solid #888; padding: 5px; width: 168px; }
+.emoji-board span { width: 22px; height: 22px; display: grid; place-items: center; font-size: 15px; cursor: pointer; border-radius: 3px; }
+.emoji-board span:hover { background: #d9e8ff; }
+.xp-taskbar { display: flex; align-items: center; gap: 6px; background: linear-gradient(#3a8aef,#1453c4); padding: 5px 8px; }
+.xp-start { display: flex; align-items: center; gap: 6px; background: linear-gradient(#5ab35a,#2f8f2f); color: #fff; font: italic 700 13px Tahoma; padding: 4px 14px 4px 10px; border-radius: 4px 9px 9px 4px; }
+.xp-task { background: linear-gradient(#5b9ef5,#2b6fd6); color: #fff; font: 11px Tahoma; padding: 5px 12px; border-radius: 3px; border: 1px solid #1a4fa0; display: flex; align-items: center; gap: 6px; }
+
+/* messenger desktop backdrop */
+.msgr-desk { background: linear-gradient(160deg, #5a8fc2, #3a6ea5 60%, #2f5d8e); }
