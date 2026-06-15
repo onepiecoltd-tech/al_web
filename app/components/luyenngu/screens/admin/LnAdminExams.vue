@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
-import type { AdminExam } from '~/types/api'
+import type { AdminExam, Paginated } from '~/types/api'
 
-const { data: exams, refresh } = await useFetch<AdminExam[]>('/api/admin/exams', { default: () => [] })
+const page = ref(1)
+const { data: res, refresh } = await useFetch<Paginated<AdminExam>>('/api/admin/exams', {
+  query: { page, limit: 10 },
+  default: () => ({ data: [], meta: { page: 1, limit: 10, total: 0, total_pages: 0 } }),
+})
+const exams = computed(() => res.value.data)
+const totalPages = computed(() => res.value.meta.total_pages)
 
 const stateClass: Record<string, string> = { published: 'ok', review: 'warn', draft: 'mut' }
 const stateLabel: Record<string, string> = { published: 'Đã đăng', review: 'Chờ duyệt', draft: 'Nháp' }
@@ -67,7 +73,8 @@ async function saveEdit() {
 
 <template>
   <div class="grid grid-cols-[1.6fr_1fr] gap-4 items-start max-[1040px]:grid-cols-1">
-    <!-- exam table -->
+    <!-- exam table + pager -->
+    <div class="flex flex-col gap-3">
     <div class="bg-paper-0 border border-line rounded-lg-ln overflow-hidden">
       <table class="w-full border-collapse">
         <thead>
@@ -106,6 +113,10 @@ async function saveEdit() {
           </tr>
         </tbody>
       </table>
+    </div>
+      <div class="flex justify-end">
+        <LnPager v-model:page="page" :total-pages="totalPages" />
+      </div>
     </div>
 
     <!-- create card -->

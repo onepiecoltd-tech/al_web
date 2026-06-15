@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import type { BlogPost } from '~/types/api'
+import type { BlogPost, Paginated } from '~/types/api'
 
-const { data: posts, refresh } = await useFetch<BlogPost[]>('/api/blog', { default: () => [] })
+const page = ref(1)
+const { data: res, refresh } = await useFetch<Paginated<BlogPost>>('/api/blog', {
+  query: { page, limit: 10 },
+  default: () => ({ data: [], meta: { page: 1, limit: 10, total: 0, total_pages: 0 } }),
+})
+const posts = computed(() => res.value.data)
+const totalPages = computed(() => res.value.meta.total_pages)
 
 function fmtDate(iso: string) {
   const d = new Date(iso)
@@ -98,6 +104,10 @@ async function remove(id: string) {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="flex justify-end">
+      <LnPager v-model:page="page" :total-pages="totalPages" />
     </div>
 
     <LnDialog :open="dialogOpen" :width="560" @close="dialogOpen = false">

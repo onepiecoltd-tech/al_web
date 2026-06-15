@@ -1,5 +1,5 @@
-// Admin: list users (auth + admin). browser → Nitro → Go (token from cookie).
+// Admin: list users (paginated + search). browser → Nitro → Go.
 export default defineEventHandler(async (event) => {
-  const res = await backend<{ data: unknown[] }>(event, '/api/v1/admin/users')
-  return res.data
+  const qs = new URLSearchParams(getQuery(event) as Record<string, string>).toString()
+  return backend(event, `/api/v1/admin/users${qs ? `?${qs}` : ''}`)
 })

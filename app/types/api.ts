@@ -14,6 +14,18 @@ export interface Profile {
   joined: string
 }
 
+export interface PageMeta {
+  page: number
+  limit: number
+  total: number
+  total_pages: number
+}
+
+export interface Paginated<T> {
+  data: T[]
+  meta: PageMeta
+}
+
 export interface AdminUser {
   id: string
   name: string

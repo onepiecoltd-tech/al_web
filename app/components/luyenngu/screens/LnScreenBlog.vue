@@ -2,13 +2,20 @@
 import { cn } from '~/lib/utils'
 import { ME } from '~/composables/useLnData'
 import { useLnCtx } from '~/composables/useLnCtx'
-import type { BlogPost } from '~/types/api'
+import type { BlogPost, Paginated } from '~/types/api'
 
 const ctx = useLnCtx()
 const open = ref<number | null>(null)
 const cats = ['Tất cả', 'IELTS', 'TOEIC', 'Phương pháp', 'Câu chuyện']
 
-const { data: posts } = await useFetch<BlogPost[]>('/api/blog', { default: () => [] })
+const page = ref(1)
+const { data: res } = await useFetch<Paginated<BlogPost>>('/api/blog', {
+  query: { page, limit: 9 },
+  default: () => ({ data: [], meta: { page: 1, limit: 9, total: 0, total_pages: 0 } }),
+})
+const posts = computed(() => res.value.data)
+const totalPages = computed(() => res.value.meta.total_pages)
+watch(page, () => { open.value = null })
 const post = computed(() => (open.value !== null ? posts.value[open.value] : null))
 
 function fmtDate(iso: string) {
@@ -114,6 +121,10 @@ const comments = [
           <span class="text-ink-3 text-xs flex items-center gap-1"><LnIcon name="message-circle" :size="13" />{{ p.comments }}</span>
         </div>
       </button>
+    </div>
+
+    <div class="flex justify-center">
+      <LnPager v-model:page="page" :total-pages="totalPages" />
     </div>
   </div>
 </template>

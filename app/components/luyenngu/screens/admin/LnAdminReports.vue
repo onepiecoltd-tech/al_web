@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import type { AdminReport } from '~/types/api'
+import type { AdminReport, Paginated } from '~/types/api'
 
 const tab = ref<'open' | 'done'>('open')
 const status = computed(() => (tab.value === 'open' ? 'open' : 'resolved'))
+const page = ref(1)
+watch(tab, () => { page.value = 1 })
 
-const { data: reports, refresh } = await useFetch<AdminReport[]>('/api/admin/reports', {
-  query: { status },
-  default: () => [],
+const { data: res, refresh } = await useFetch<Paginated<AdminReport>>('/api/admin/reports', {
+  query: { status, page, limit: 10 },
+  default: () => ({ data: [], meta: { page: 1, limit: 10, total: 0, total_pages: 0 } }),
 })
+const reports = computed(() => res.value.data)
+const totalPages = computed(() => res.value.meta.total_pages)
 
 const actionLabel: Record<string, string> = { dismissed: 'Đã bỏ qua', hidden: 'Đã ẩn', removed: 'Đã gỡ' }
 
@@ -62,5 +66,9 @@ async function resolve(r: AdminReport, action: string) {
       </div>
       <LnBadge v-else tone="reu">{{ actionLabel[r.action] ?? 'Đã xử lý' }}</LnBadge>
     </LnCard>
+
+    <div class="flex justify-end">
+      <LnPager v-model:page="page" :total-pages="totalPages" />
+    </div>
   </div>
 </template>

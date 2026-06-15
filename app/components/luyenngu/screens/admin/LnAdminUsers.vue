@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import type { AvatarColor } from '~/composables/useLnData'
-import type { AdminUser } from '~/types/api'
-
-const { data: users, refresh } = await useFetch<AdminUser[]>('/api/admin/users', { default: () => [] })
+import type { AdminUser, Paginated } from '~/types/api'
 
 const q = ref('')
 const plan = ref<'all' | 'pro' | 'free'>('all')
+const page = ref(1)
+watch([q, plan], () => { page.value = 1 })
 
-const rows = computed(() =>
-  users.value.filter(u =>
-    (plan.value === 'all' || u.plan.toLowerCase() === plan.value)
-    && (u.name.toLowerCase().includes(q.value.toLowerCase()) || u.email.includes(q.value.toLowerCase())),
-  ),
-)
+const { data: res, refresh } = await useFetch<Paginated<AdminUser>>('/api/admin/users', {
+  query: { q, plan, page, limit: 10 },
+  default: () => ({ data: [], meta: { page: 1, limit: 10, total: 0, total_pages: 0 } }),
+})
+const rows = computed(() => res.value.data)
+const totalPages = computed(() => res.value.meta.total_pages)
+const total = computed(() => res.value.meta.total)
 
 const avatarPalette: AvatarColor[] = ['son', 'reu', 'gold', 'ink']
 const avatarColor = (i: number): AvatarColor => avatarPalette[i % avatarPalette.length]!
@@ -137,7 +138,8 @@ async function toggleBan(u: AdminUser) {
 
     <!-- footer -->
     <div class="flex items-center justify-between mt-3.5">
-      <span class="text-ink-3 text-xs">{{ rows.length }} / {{ users.length }} người dùng</span>
+      <span class="text-ink-3 text-xs">{{ total }} người dùng</span>
+      <LnPager v-model:page="page" :total-pages="totalPages" />
     </div>
 
     <!-- create / edit dialog -->
