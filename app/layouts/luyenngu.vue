@@ -100,6 +100,9 @@ provide(LN_CTX, ctx)
           <LnSearch placeholder="Tìm bạn bè, nhóm, bài viết…" />
         </div>
         <LnCoinsPill :amount="coins" />
+        <NuxtLink :to="localePath('/admin')">
+          <LnBtn variant="outline" size="sm" icon="shield-alert">Trang quản trị</LnBtn>
+        </NuxtLink>
         <LnIconBtn :title="offline ? 'Đang ngoại tuyến — bấm để online' : 'Mô phỏng ngoại tuyến'" @click="offline = !offline">
           <LnIcon :name="offline ? 'wifi-off' : 'wifi'" :size="20" :class="offline && 'text-error'" />
         </LnIconBtn>
