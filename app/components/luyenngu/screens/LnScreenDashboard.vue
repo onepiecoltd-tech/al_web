@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { ME, FRIENDS } from '~/composables/useLnData'
+import { ME, type AvatarColor } from '~/composables/useLnData'
 import { useLnCtx } from '~/composables/useLnCtx'
+import type { Friend } from '~/types/api'
 
 const ctx = useLnCtx()
 const firstName = ME.name.split(' ').slice(-1)[0]
+
+const { data: friends } = await useFetch<Friend[]>('/api/friends', { default: () => [] })
+const onlineFriends = computed(() => friends.value.filter(f => f.presence !== 'offline'))
+
+const avatarPalette: AvatarColor[] = ['son', 'reu', 'gold', 'ink']
+const avatarColor = (i: number): AvatarColor => avatarPalette[i % avatarPalette.length]!
 
 const shortcuts = [
   { ic: 'file-text', t: 'Giải đề AI', s: 'còn 5 lượt hôm nay', go: 'luyen-de', tone: 'son' },
@@ -21,7 +28,6 @@ const activity = [
   { ic: 'gift', t: 'Tặng 🏆 cho Thu Hà trong buổi live', s: '−120 xu · 2 ngày trước', bg: 'bg-gold-soft', fg: 'text-gold-deep' },
 ]
 
-const onlineFriends = FRIENDS.filter(f => f.status !== 'offline')
 </script>
 
 <template>
@@ -98,8 +104,8 @@ const onlineFriends = FRIENDS.filter(f => f.status !== 'offline')
       </LnCard>
       <LnCard>
         <div class="flex items-center justify-between mb-2"><b class="font-body text-base font-bold">Bạn bè online</b><a class="text-xs cursor-pointer text-son" @click="ctx.go('ban-be')">Xem tất cả</a></div>
-        <div v-for="f in onlineFriends" :key="f.name" class="flex items-center gap-3 py-[11px] border-b border-line-soft last:border-0">
-          <LnAvatar :name="f.name" :color="f.color" :size="36" :status="f.status" />
+        <div v-for="(f, i) in onlineFriends" :key="f.id" class="flex items-center gap-3 py-[11px] border-b border-line-soft last:border-0">
+          <LnAvatar :name="f.name" :color="avatarColor(i)" :size="36" :status="f.presence" />
           <div class="flex-1"><div class="font-body text-[0.9375rem] font-semibold">{{ f.name }}</div><div class="text-xs text-ink-3 mt-px">{{ f.msg }}</div></div>
           <LnBtn variant="ghost" size="sm" icon="swords" @click="ctx.go('thach-dau')" />
         </div>

@@ -6,6 +6,12 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  runtimeConfig: {
+    // Server-only (BFF): the browser never calls the Go API directly; Nitro
+    // server routes proxy to it. Override at runtime with NUXT_API_BASE.
+    apiBase: 'http://localhost:8080',
+  },
+
   modules: [
     '@pinia/nuxt',
     '@nuxtjs/i18n',

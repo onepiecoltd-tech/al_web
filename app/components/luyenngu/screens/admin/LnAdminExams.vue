@@ -1,17 +1,68 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
-import { A_EXAMS } from '~/composables/useLnData'
+import type { AdminExam } from '~/types/api'
 
+const { data: exams, refresh } = await useFetch<AdminExam[]>('/api/admin/exams', { default: () => [] })
+
+const stateClass: Record<string, string> = { published: 'ok', review: 'warn', draft: 'mut' }
+const stateLabel: Record<string, string> = { published: 'Đã đăng', review: 'Chờ duyệt', draft: 'Nháp' }
+const examTypes = ['IELTS', 'TOEIC', 'TOEFL', 'Từ vựng']
+
+function fmtDate(iso: string) {
+  const d = new Date(iso)
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+// create (upload card)
 const drop = ref(false)
-const examName = ref('')
-
+const form = reactive({ name: '', type: 'IELTS', questions: 0 })
+const creating = ref(false)
 function onDrop(e: DragEvent) {
   e.preventDefault()
   drop.value = false
 }
+async function create() {
+  if (!form.name.trim())
+    return
+  creating.value = true
+  try {
+    await $fetch('/api/admin/exams', { method: 'POST', body: { ...form } })
+    Object.assign(form, { name: '', type: 'IELTS', questions: 0 })
+    await refresh()
+  }
+  finally {
+    creating.value = false
+  }
+}
 
-const stateClass: Record<string, string> = { published: 'ok', review: 'warn', draft: 'mut' }
-const stateLabel: Record<string, string> = { published: 'Đã đăng', review: 'Chờ duyệt', draft: 'Nháp' }
+async function update(e: AdminExam, patch: Partial<AdminExam>) {
+  await $fetch(`/api/admin/exams/${e.id}`, {
+    method: 'PUT',
+    body: { name: e.name, type: e.type, questions: e.questions, state: e.state, ...patch },
+  })
+  await refresh()
+}
+
+async function remove(e: AdminExam) {
+  await $fetch(`/api/admin/exams/${e.id}`, { method: 'DELETE' })
+  await refresh()
+}
+
+// edit dialog
+const editOpen = ref(false)
+const editing = ref<AdminExam | null>(null)
+const editForm = reactive({ name: '', type: 'IELTS', questions: 0, state: 'draft' as AdminExam['state'] })
+function openEdit(e: AdminExam) {
+  editing.value = e
+  Object.assign(editForm, { name: e.name, type: e.type, questions: e.questions, state: e.state })
+  editOpen.value = true
+}
+async function saveEdit() {
+  if (!editing.value)
+    return
+  await update(editing.value, { ...editForm })
+  editOpen.value = false
+}
 </script>
 
 <template>
@@ -27,7 +78,7 @@ const stateLabel: Record<string, string> = { published: 'Đã đăng', review: '
           </tr>
         </thead>
         <tbody>
-          <tr v-for="e in A_EXAMS" :key="e.name" class="transition-colors hover:bg-paper-1">
+          <tr v-for="e in exams" :key="e.id" class="transition-colors hover:bg-paper-1">
             <td class="px-4 py-3 border-b border-line-soft align-middle">
               <div class="flex items-center gap-2.5">
                 <div class="grid place-items-center w-[34px] h-[34px] rounded-md-ln bg-reu-soft flex-none">
@@ -35,20 +86,21 @@ const stateLabel: Record<string, string> = { published: 'Đã đăng', review: '
                 </div>
                 <div>
                   <div class="font-body text-[0.8125rem] font-semibold">{{ e.name }}</div>
-                  <div class="text-xs text-ink-3">{{ e.date }}</div>
+                  <div class="text-xs text-ink-3">{{ fmtDate(e.created_at) }}</div>
                 </div>
               </div>
             </td>
             <td class="px-4 py-3 border-b border-line-soft align-middle"><LnBadge tone="reu">{{ e.type }}</LnBadge></td>
-            <td class="px-4 py-3 border-b border-line-soft align-middle tabular-nums font-body text-[0.9375rem]">{{ e.q }}</td>
-            <td class="px-4 py-3 border-b border-line-soft align-middle text-ink-3 text-xs">{{ e.by }}</td>
+            <td class="px-4 py-3 border-b border-line-soft align-middle tabular-nums font-body text-[0.9375rem]">{{ e.questions }}</td>
+            <td class="px-4 py-3 border-b border-line-soft align-middle text-ink-3 text-xs">{{ e.author }}</td>
             <td class="px-4 py-3 border-b border-line-soft align-middle">
               <span class="ln-spill" :class="stateClass[e.state]">{{ stateLabel[e.state] }}</span>
             </td>
             <td class="px-4 py-3 border-b border-line-soft align-middle">
               <div class="flex gap-1 justify-end items-center">
-                <LnBtn v-if="e.state === 'review'" variant="secondary" size="sm">Duyệt</LnBtn>
-                <LnIconBtn :size="32"><LnIcon name="ellipsis" :size="16" /></LnIconBtn>
+                <LnBtn v-if="e.state === 'review'" variant="secondary" size="sm" @click="update(e, { state: 'published' })">Duyệt</LnBtn>
+                <LnIconBtn :size="32" title="Sửa" @click="openEdit(e)"><LnIcon name="pen-line" :size="15" /></LnIconBtn>
+                <LnIconBtn :size="32" title="Xóa" @click="remove(e)"><LnIcon name="trash-2" :size="15" class="text-error" /></LnIconBtn>
               </div>
             </td>
           </tr>
@@ -56,9 +108,9 @@ const stateLabel: Record<string, string> = { published: 'Đã đăng', review: '
       </table>
     </div>
 
-    <!-- upload card -->
+    <!-- create card -->
     <LnCard pop>
-      <b class="font-body text-base font-bold">Tải lên đề thi mới</b>
+      <b class="font-body text-base font-bold">Thêm đề thi mới</b>
       <div
         :class="cn(
           'mt-3.5 border-[1.5px] border-dashed rounded-lg-ln p-8 text-center',
@@ -70,20 +122,58 @@ const stateLabel: Record<string, string> = { published: 'Đã đăng', review: '
       >
         <LnIcon name="upload-cloud" :size="30" class="text-ink-4 mx-auto mb-2.5" />
         <div class="font-body text-[0.9375rem]">Kéo-thả hoặc <b class="text-son">chọn tệp</b></div>
-        <div class="text-ink-3 text-xs mt-1.5">PDF · DOCX · XLSX · CSV — tối đa 25MB</div>
+        <div class="text-ink-3 text-xs mt-1.5">PDF · DOCX · XLSX · CSV — (trích xuất tệp sẽ bổ sung sau)</div>
       </div>
 
       <div class="flex flex-col gap-3 mt-4">
-        <LnField v-model="examName" label="Tên đề" placeholder="VD: Cambridge IELTS 19 — Test 1" />
+        <LnField v-model="form.name" label="Tên đề" placeholder="VD: Cambridge IELTS 19 — Test 1" />
         <div class="flex flex-col gap-1.5">
           <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Loại</label>
-          <select class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] text-ink focus:outline-none focus:border-son focus:shadow-[0_0_0_3px_var(--son-soft)]">
-            <option>IELTS</option><option>TOEIC</option><option>TOEFL</option><option>Từ vựng</option>
+          <select v-model="form.type" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] text-ink focus:outline-none focus:border-son">
+            <option v-for="t in examTypes" :key="t" :value="t">{{ t }}</option>
           </select>
         </div>
-        <LnBtn variant="primary" icon="upload" class="w-full">Tải lên & trích xuất</LnBtn>
-        <p class="text-ink-3 text-xs">Server (Go) trích xuất văn bản, tách câu hỏi, rồi đưa vào ngân hàng sau khi duyệt.</p>
+        <div class="flex flex-col gap-1.5">
+          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Số câu</label>
+          <input v-model.number="form.questions" type="number" min="0" placeholder="0" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] text-ink focus:outline-none focus:border-son">
+        </div>
+        <LnBtn variant="primary" icon="plus" class="w-full" :disabled="creating" @click="create">
+          {{ creating ? 'Đang tạo…' : 'Tạo đề (nháp)' }}
+        </LnBtn>
       </div>
     </LnCard>
+
+    <!-- edit dialog -->
+    <LnDialog :open="editOpen" :width="460" @close="editOpen = false">
+      <div class="flex items-center justify-between mb-4">
+        <b class="font-display text-[1.3125rem] font-bold">Sửa đề thi</b>
+        <LnIconBtn @click="editOpen = false"><LnIcon name="x" :size="20" /></LnIconBtn>
+      </div>
+      <div class="flex flex-col gap-3.5">
+        <LnField v-model="editForm.name" label="Tên đề" />
+        <div class="flex flex-col gap-1.5">
+          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Loại</label>
+          <select v-model="editForm.type" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] focus:outline-none focus:border-son">
+            <option v-for="t in examTypes" :key="t" :value="t">{{ t }}</option>
+          </select>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Số câu</label>
+          <input v-model.number="editForm.questions" type="number" min="0" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] text-ink focus:outline-none focus:border-son">
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Trạng thái</label>
+          <select v-model="editForm.state" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] focus:outline-none focus:border-son">
+            <option value="draft">Nháp</option>
+            <option value="review">Chờ duyệt</option>
+            <option value="published">Đã đăng</option>
+          </select>
+        </div>
+        <div class="flex gap-2.5 mt-1">
+          <LnBtn variant="ghost" class="flex-1" @click="editOpen = false">Hủy</LnBtn>
+          <LnBtn variant="primary" class="flex-1" @click="saveEdit">Lưu</LnBtn>
+        </div>
+      </div>
+    </LnDialog>
   </div>
 </template>

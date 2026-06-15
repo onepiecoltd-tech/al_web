@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import { GIFTS } from '~/composables/useLnData'
+import type { AdminSetting } from '~/types/api'
+
+const { data: gifts } = await useGifts()
 
 const coinPacks: [string, string][] = [['₫20.000', '230 xu'], ['₫50.000', '600 xu'], ['₫100.000', '1.300 xu']]
 
-const flags = reactive([
-  { t: 'Cho phép đăng ký mới', on: true },
-  { t: 'Blog cộng đồng (cần duyệt)', on: true },
-  { t: 'Livestream + tặng quà', on: true },
-  { t: 'Chế độ bảo trì', on: false },
-])
+const { data: flags, refresh } = await useFetch<AdminSetting[]>('/api/admin/settings', { default: () => [] })
+
+const saving = ref<string | null>(null)
+async function toggle(s: AdminSetting, value: boolean) {
+  saving.value = s.key
+  try {
+    await $fetch(`/api/admin/settings/${s.key}`, { method: 'PUT', body: { value } })
+    await refresh()
+  }
+  finally {
+    saving.value = null
+  }
+}
 </script>
 
 <template>
@@ -17,10 +26,10 @@ const flags = reactive([
     <LnCard pop>
       <b class="font-body text-base font-bold">Danh mục quà (gifts)</b>
       <p class="text-ink-3 text-xs mt-1 mb-3">Giá tính bằng xu. Sửa sẽ áp dụng cho mọi livestream.</p>
-      <div v-for="g in GIFTS" :key="g.nm" class="flex items-center gap-3 py-[9px] border-b border-line-soft last:border-0">
-        <span class="text-2xl leading-none">{{ g.em }}</span>
-        <span class="flex-1 font-body text-[0.9375rem] font-semibold">{{ g.nm }}</span>
-        <LnCoinsPill :amount="g.p" />
+      <div v-for="g in gifts" :key="g.id" class="flex items-center gap-3 py-[9px] border-b border-line-soft last:border-0">
+        <span class="text-2xl leading-none">{{ g.emoji }}</span>
+        <span class="flex-1 font-body text-[0.9375rem] font-semibold">{{ g.name }}</span>
+        <LnCoinsPill :amount="g.price" />
         <LnIconBtn :size="30"><LnIcon name="pen-line" :size="14" /></LnIconBtn>
       </div>
       <LnBtn variant="outline" size="sm" icon="plus" class="mt-3">Thêm quà</LnBtn>
@@ -45,12 +54,12 @@ const flags = reactive([
         <div class="mt-1.5">
           <div
             v-for="(f, i) in flags"
-            :key="f.t"
+            :key="f.key"
             class="flex items-center justify-between gap-4 py-[13px]"
             :class="i === flags.length - 1 ? '' : 'border-b border-line-soft'"
           >
-            <div class="font-body text-[0.9375rem]">{{ f.t }}</div>
-            <LnSwitch v-model="f.on" />
+            <div class="font-body text-[0.9375rem]">{{ f.label }}</div>
+            <LnSwitch :model-value="f.value" :disabled="saving === f.key" @update:model-value="(v: boolean) => toggle(f, v)" />
           </div>
         </div>
       </LnCard>

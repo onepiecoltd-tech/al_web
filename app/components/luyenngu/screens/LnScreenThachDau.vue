@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
-import { LEADERBOARD } from '~/composables/useLnData'
+import type { AvatarColor } from '~/composables/useLnData'
 import { useLnCtx } from '~/composables/useLnCtx'
+import type { LeaderboardRow } from '~/types/api'
 
 const ctx = useLnCtx()
+const { data: board } = await useFetch<LeaderboardRow[]>('/api/leaderboard', { default: () => [] })
+
+const avatarPalette: AvatarColor[] = ['son', 'reu', 'gold', 'ink']
+const avatarColor = (i: number): AvatarColor => avatarPalette[i % avatarPalette.length]!
 const phase = ref<'lobby' | 'searching' | 'vs' | 'result'>('lobby')
 let timer: ReturnType<typeof setTimeout> | undefined
 
@@ -100,14 +105,14 @@ const rankColor = (i: number) => ['text-gold-deep', 'text-[#8d8d8d]', 'text-[#a9
     <LnCard>
       <div class="flex items-center justify-between mb-2"><b class="font-body text-base font-bold">Bảng xếp hạng · tuần</b><span class="text-ink-3 text-xs">theo ELO</span></div>
       <div
-        v-for="(p, i) in LEADERBOARD"
-        :key="p.name"
+        v-for="(p, i) in board"
+        :key="p.id"
         :class="cn('flex items-center gap-3 border-b border-line-soft last:border-0', p.me ? 'bg-son-soft rounded-md-ln px-2.5 -mx-2.5 py-2.5 !border-0' : 'py-[11px]')"
       >
         <span class="w-7 text-center font-display font-extrabold flex-none" :class="rankColor(i)">{{ i + 1 }}</span>
-        <LnAvatar :name="p.name" :color="p.color" :size="34" />
-        <div class="flex-1"><div class="font-body text-[0.9375rem] font-semibold">{{ p.name }}<span v-if="p.me" class="text-ink-3 font-normal"> · bạn</span></div><div class="text-xs text-ink-3 mt-px">{{ p.w }} thắng</div></div>
-        <div class="text-right"><div class="font-body font-bold text-[0.95rem]">{{ p.elo }}</div><div class="text-xs mt-px" :class="p.delta[0] === '+' ? 'text-success' : 'text-error'">{{ p.delta }}</div></div>
+        <LnAvatar :name="p.name" :color="avatarColor(i)" :size="34" />
+        <div class="flex-1"><div class="font-body text-[0.9375rem] font-semibold">{{ p.name }}<span v-if="p.me" class="text-ink-3 font-normal"> · bạn</span></div><div class="text-xs text-ink-3 mt-px">{{ p.wins }} thắng</div></div>
+        <div class="text-right"><div class="font-body font-bold text-[0.95rem]">{{ p.elo }}</div></div>
       </div>
     </LnCard>
   </div>

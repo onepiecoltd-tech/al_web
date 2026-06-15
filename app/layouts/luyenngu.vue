@@ -22,7 +22,10 @@ const TITLES: Record<string, string> = {
   '/blog': 'Blog', '/ho-so': 'Hồ sơ',
 }
 
-const { coins, authed, messengerOpen, offline } = useLnApp()
+const { coins, messengerOpen, offline } = useLnApp()
+const auth = useAuthStore()
+const { unread } = useNotifications()
+const { isAdmin } = useMe()
 const notifOpen = ref(false)
 const localePath = useLocalePath()
 const route = useRoute()
@@ -37,7 +40,7 @@ const title = computed(() => TITLES[currentPath.value] || 'LuyệnNgữ')
 useHead({ bodyAttrs: { class: 'luyenngu font-body' } })
 
 function logout() {
-  authed.value = false
+  auth.logout()
   navigateTo(localePath('/login'))
 }
 
@@ -100,15 +103,21 @@ provide(LN_CTX, ctx)
           <LnSearch placeholder="Tìm bạn bè, nhóm, bài viết…" />
         </div>
         <LnCoinsPill :amount="coins" />
-        <NuxtLink :to="localePath('/admin')">
+        <NuxtLink v-if="isAdmin" :to="localePath('/admin')">
           <LnBtn variant="outline" size="sm" icon="shield-alert">Trang quản trị</LnBtn>
         </NuxtLink>
         <LnIconBtn :title="offline ? 'Đang ngoại tuyến — bấm để online' : 'Mô phỏng ngoại tuyến'" @click="offline = !offline">
           <LnIcon :name="offline ? 'wifi-off' : 'wifi'" :size="20" :class="offline && 'text-error'" />
         </LnIconBtn>
-        <LnIconBtn dot @click="notifOpen = !notifOpen">
-          <LnIcon name="bell" :size="20" />
-        </LnIconBtn>
+        <div class="relative">
+          <LnIconBtn @click="notifOpen = !notifOpen">
+            <LnIcon name="bell" :size="20" />
+          </LnIconBtn>
+          <span
+            v-if="unread > 0"
+            class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 grid place-items-center rounded-full bg-son text-white text-[0.65rem] font-bold tabular-nums pointer-events-none"
+          >{{ unread > 9 ? '9+' : unread }}</span>
+        </div>
         <LnAvatar :name="ME.name" color="son" :size="36" status="online" />
       </header>
 

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // Screen: Gặp gỡ — trò chuyện ngẫu nhiên người lạ (18+, có kiểm soát)
-import { GIFTS, type Gift } from '~/composables/useLnData'
 import { useLnCtx } from '~/composables/useLnCtx'
+import type { Gift } from '~/types/api'
 
 const ctx = useLnCtx()
+const { data: gifts } = await useGifts()
 
 const optIn = ref(false)
 const phase = ref<'setup' | 'searching' | 'session'>('setup')
@@ -29,9 +30,9 @@ const msgs = ref<{ them?: boolean; gift?: boolean; t: string }[]>([
   { them: false, t: 'Mình target 7.0 😄 cùng luyện Part 2 nhé' },
 ])
 function sendGift(g: Gift) {
-  if (ctx.coins.value >= g.p) {
-    ctx.addCoins(-g.p)
-    msgs.value.push({ gift: true, t: `Bạn đã tặng ${g.em} ${g.nm}` })
+  if (ctx.coins.value >= g.price) {
+    ctx.addCoins(-g.price)
+    msgs.value.push({ gift: true, t: `Bạn đã tặng ${g.emoji} ${g.name}` })
     giftOpen.value = false
   }
 }
@@ -166,16 +167,16 @@ const scopeLabel: Record<string, string> = { city: 'cùng tỉnh/thành', nearby
       <p class="text-ink-3 font-body text-xs mb-3.5">Chỉ dành cho 18+ · có hạn mức mỗi phiên.</p>
       <div class="flex gap-1.5 flex-wrap">
         <button
-          v-for="g in GIFTS"
-          :key="g.nm"
+          v-for="g in gifts"
+          :key="g.id"
           type="button"
-          :title="`${g.nm} · ${g.p} xu`"
+          :title="`${g.name} · ${g.price} xu`"
           class="basis-[calc(25%-5px)] bg-paper-0 border border-line rounded-lg-ln px-1 py-[7px] text-center cursor-pointer transition-all hover:border-gold-line hover:bg-gold-soft hover:-translate-y-0.5"
           @click="sendGift(g)"
         >
-          <div class="text-[1.3rem] leading-none">{{ g.em }}</div>
-          <div class="text-xs text-ink-2 mt-1">{{ g.nm }}</div>
-          <div class="mt-0.5 inline-flex items-center gap-[3px] text-xs font-bold text-gold-deep"><LnCoin :size="13" />{{ g.p }}</div>
+          <div class="text-[1.3rem] leading-none">{{ g.emoji }}</div>
+          <div class="text-xs text-ink-2 mt-1">{{ g.name }}</div>
+          <div class="mt-0.5 inline-flex items-center gap-[3px] text-xs font-bold text-gold-deep"><LnCoin :size="13" />{{ g.price }}</div>
         </button>
       </div>
     </LnDialog>

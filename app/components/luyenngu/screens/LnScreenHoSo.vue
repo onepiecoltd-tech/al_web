@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
-import { ME } from '~/composables/useLnData'
 import { useLnCtx } from '~/composables/useLnCtx'
 
 const ctx = useLnCtx()
+const { me } = useMe()
 const topup = ref(false)
 const settings = reactive({ show_online: true, allow_stranger_challenge: true, allow_stranger_chat: false, notify_on_friend_live: false })
 
@@ -35,16 +35,16 @@ function buy(xu: number) { ctx.addCoins(xu); topup.value = false }
   <div class="flex flex-col gap-5">
     <!-- header -->
     <LnCard pop class="flex gap-5 items-center flex-wrap">
-      <LnAvatar :name="ME.name" color="son" :size="76" status="online" />
+      <LnAvatar :name="me?.name ?? ''" color="son" :size="76" status="online" />
       <div class="flex-1 min-w-[220px]">
         <div class="flex items-center gap-2.5">
-          <h2 class="font-display font-bold text-[1.75rem] whitespace-nowrap">{{ ME.name }}</h2>
-          <LnBadge tone="gold" status>Pro</LnBadge>
+          <h2 class="font-display font-bold text-[1.75rem] whitespace-nowrap">{{ me?.name }}</h2>
+          <LnBadge tone="gold" status>{{ me?.plan }}</LnBadge>
         </div>
-        <div class="text-ink-3 font-body text-[0.9375rem] mt-1">{{ ME.handle }} · Tham gia {{ ME.joined }}</div>
+        <div class="text-ink-3 font-body text-[0.9375rem] mt-1">{{ me?.handle }} · Tham gia {{ me?.joined }}</div>
         <div class="flex gap-[18px] mt-3.5 flex-wrap">
-          <span class="flex items-center gap-1.5 font-body text-[0.8125rem] font-semibold whitespace-nowrap"><LnIcon name="flame" :size="16" class="text-son" />{{ ME.streak }} ngày streak</span>
-          <span class="flex items-center gap-1.5 font-body text-[0.8125rem] font-semibold whitespace-nowrap"><LnIcon name="trophy" :size="16" class="text-gold-deep" />ELO {{ ME.elo }} · Hạng {{ ME.rank }}</span>
+          <span class="flex items-center gap-1.5 font-body text-[0.8125rem] font-semibold whitespace-nowrap"><LnIcon name="flame" :size="16" class="text-son" />{{ me?.streak }} ngày streak</span>
+          <span class="flex items-center gap-1.5 font-body text-[0.8125rem] font-semibold whitespace-nowrap"><LnIcon name="trophy" :size="16" class="text-gold-deep" />ELO {{ me?.elo }} · Hạng {{ me?.rank }}</span>
         </div>
       </div>
       <LnBtn variant="outline" icon="pen-line">Sửa hồ sơ</LnBtn>

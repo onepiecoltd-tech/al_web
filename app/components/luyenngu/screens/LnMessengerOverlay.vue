@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { FRIENDS } from '~/composables/useLnData'
+import type { Friend } from '~/types/api'
 
 const emit = defineEmits<{ exit: [] }>()
-const online = FRIENDS.filter(f => f.status !== 'offline')
-const offline = FRIENDS.filter(f => f.status === 'offline')
+const { data: friends } = useFetch<Friend[]>('/api/friends', { default: () => [] })
+const online = computed(() => friends.value.filter(f => f.presence !== 'offline'))
+const offline = computed(() => friends.value.filter(f => f.presence === 'offline'))
 const emojis = ['😀', '😄', '😉', '😎', '😍', '😜', '😢', '😡', '😱', '👍', '👏', '🔥', '❤️', '🌹', '🏆', '🎓', '💎', '⚔️']
 </script>
 
@@ -20,12 +21,12 @@ const emojis = ['😀', '😄', '😉', '😎', '😍', '😜', '😢', '😡', 
           <div><div class="me-nm">Minh Anh</div><div class="me-st">▾ Sẵn sàng luyện đề ✦</div></div>
         </div>
         <div class="xp-list">
-          <div class="xp-grp">Bạn bè ({{ online.length }}/{{ FRIENDS.length }})</div>
-          <div v-for="fr in online" :key="fr.name" class="xp-bud">
-            <span class="dot" :class="fr.status === 'online' ? 'on' : fr.status" />{{ fr.name }}{{ fr.status === 'busy' ? ' — đang thi đấu' : fr.status === 'away' ? ' (vắng mặt)' : '' }}
+          <div class="xp-grp">Bạn bè ({{ online.length }}/{{ friends.length }})</div>
+          <div v-for="fr in online" :key="fr.id" class="xp-bud">
+            <span class="dot" :class="fr.presence === 'online' ? 'on' : fr.presence" />{{ fr.name }}{{ fr.presence === 'busy' ? ' — đang thi đấu' : fr.presence === 'away' ? ' (vắng mặt)' : '' }}
           </div>
           <div class="xp-grp">Ngoại tuyến</div>
-          <div v-for="fr in offline" :key="fr.name" class="xp-bud off"><span class="dot off" />{{ fr.name }}</div>
+          <div v-for="fr in offline" :key="fr.id" class="xp-bud off"><span class="dot off" />{{ fr.name }}</div>
         </div>
       </div>
 

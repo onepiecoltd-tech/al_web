@@ -1,12 +1,23 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
-import { BLOG, ME } from '~/composables/useLnData'
+import { ME } from '~/composables/useLnData'
 import { useLnCtx } from '~/composables/useLnCtx'
+import type { BlogPost } from '~/types/api'
 
 const ctx = useLnCtx()
 const open = ref<number | null>(null)
 const cats = ['Tất cả', 'IELTS', 'TOEIC', 'Phương pháp', 'Câu chuyện']
-const post = computed(() => (open.value !== null ? BLOG[open.value] : null))
+
+const { data: posts } = await useFetch<BlogPost[]>('/api/blog', { default: () => [] })
+const post = computed(() => (open.value !== null ? posts.value[open.value] : null))
+
+function fmtDate(iso: string) {
+  const d = new Date(iso)
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+function fmtReads(n: number) {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+}
 
 const comments = [
   { n: 'Khánh', c: 'reu' as const, t: 'Khung 4 ý cực hữu ích, mình áp dụng thử band tăng hẳn. Ai muốn so tài Part 2 không? 😎' },
@@ -18,11 +29,11 @@ const comments = [
   <!-- POST VIEW -->
   <div v-if="post" class="max-w-[720px] mx-auto">
     <LnBtn variant="ghost" size="sm" icon="chevron-left" @click="open = null">Quay lại Blog</LnBtn>
-    <span class="block mt-4 text-xs font-extrabold uppercase tracking-[0.12em] text-son">{{ post.cat }}</span>
+    <span class="block mt-4 text-xs font-extrabold uppercase tracking-[0.12em] text-son">{{ post.category }}</span>
     <h1 class="font-display font-extrabold text-[2.5rem] my-2 mb-3.5 tracking-[-0.015em]">{{ post.title }}</h1>
     <div class="flex items-center gap-3 py-[11px]">
       <LnAvatar :name="post.author" color="son" :size="40" />
-      <div class="flex-1"><div class="font-body text-base font-semibold">{{ post.author }}</div><div class="text-xs text-ink-3 mt-px">{{ post.date }} · {{ post.reads }} lượt đọc</div></div>
+      <div class="flex-1"><div class="font-body text-base font-semibold">{{ post.author }}</div><div class="text-xs text-ink-3 mt-px">{{ fmtDate(post.created_at) }} · {{ fmtReads(post.reads) }} lượt đọc</div></div>
       <LnBtn variant="outline" size="sm" icon="user-plus">Theo dõi</LnBtn>
     </div>
     <div class="h-[200px] rounded-xl-ln bg-son-soft grid place-items-center my-4"><LnIcon name="lightbulb" :size="44" class="text-son" /></div>
@@ -73,21 +84,21 @@ const comments = [
       <LnBtn variant="outline" icon="pen-line">Viết bài</LnBtn>
     </div>
 
-    <div class="relative overflow-hidden bg-ink text-white rounded-xl-ln p-8 cursor-pointer before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(120%_130%_at_100%_0%,rgba(220,74,51,.36),transparent_55%)]" @click="open = 0">
+    <div v-if="posts[0]" class="relative overflow-hidden bg-ink text-white rounded-xl-ln p-8 cursor-pointer before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(120%_130%_at_100%_0%,rgba(220,74,51,.36),transparent_55%)]" @click="open = 0">
       <div class="relative">
-        <LnBadge status class="bg-white/15 text-white">{{ BLOG[0].cat }}</LnBadge>
-        <h2 class="mt-3 font-display font-extrabold text-[1.9rem] max-w-[20ch]">{{ BLOG[0].title }}</h2>
-        <p class="text-white/70 font-body text-[0.9375rem] mt-1.5 max-w-[52ch]">{{ BLOG[0].excerpt }}</p>
+        <LnBadge status class="bg-white/15 text-white">{{ posts[0].category }}</LnBadge>
+        <h2 class="mt-3 font-display font-extrabold text-[1.9rem] max-w-[20ch]">{{ posts[0].title }}</h2>
+        <p class="text-white/70 font-body text-[0.9375rem] mt-1.5 max-w-[52ch]">{{ posts[0].excerpt }}</p>
         <div class="flex items-center gap-2.5 mt-4 text-white/80 text-xs">
-          <LnAvatar :name="BLOG[0].author" color="son" :size="26" /> {{ BLOG[0].author }} · {{ BLOG[0].date }} · {{ BLOG[0].reads }} lượt đọc
+          <LnAvatar :name="posts[0].author" color="son" :size="26" /> {{ posts[0].author }} · {{ fmtDate(posts[0].created_at) }} · {{ fmtReads(posts[0].reads) }} lượt đọc
         </div>
       </div>
     </div>
 
     <div class="grid grid-cols-3 gap-4 max-[1040px]:grid-cols-2 max-[720px]:grid-cols-1">
       <button
-        v-for="(p, i) in BLOG.slice(1)"
-        :key="p.title"
+        v-for="(p, i) in posts.slice(1)"
+        :key="p.id"
         type="button"
         class="text-left cursor-pointer flex flex-col gap-2.5 border border-line bg-paper-0 rounded-lg-ln p-4 transition-colors hover:bg-paper-2"
         @click="open = i + 1"
@@ -95,11 +106,11 @@ const comments = [
         <div class="h-[120px] rounded-md-ln grid place-items-center" :class="i % 2 ? 'bg-reu-soft' : 'bg-son-soft'">
           <LnIcon :name="i % 2 ? 'book-open' : 'lightbulb'" :size="30" :class="i % 2 ? 'text-reu' : 'text-son'" />
         </div>
-        <span class="text-xs font-extrabold uppercase tracking-[0.12em] text-son">{{ p.cat }}</span>
+        <span class="text-xs font-extrabold uppercase tracking-[0.12em] text-son">{{ p.category }}</span>
         <div class="font-body text-base font-bold leading-snug">{{ p.title }}</div>
         <div class="text-xs text-ink-3 line-clamp-2">{{ p.excerpt }}</div>
         <div class="flex items-center justify-between mt-auto pt-2">
-          <span class="text-ink-3 text-xs">{{ p.author }} · {{ p.date }}</span>
+          <span class="text-ink-3 text-xs">{{ p.author }} · {{ fmtDate(p.created_at) }}</span>
           <span class="text-ink-3 text-xs flex items-center gap-1"><LnIcon name="message-circle" :size="13" />{{ p.comments }}</span>
         </div>
       </button>

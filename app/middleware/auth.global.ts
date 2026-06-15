@@ -1,18 +1,16 @@
-import { useLnApp } from '~/composables/useLnData'
-
-// Mock auth gate: chặn vào app khi chưa đăng nhập, đẩy về /login.
-// (state là mock cấp module — sẽ thay bằng Pinia + cookie khi nối backend.)
+// Auth gate: chặn vào app khi chưa đăng nhập, đẩy về /login.
+// (trạng thái đăng nhập lấy từ Pinia store + cookie token.)
 export default defineNuxtRouteMiddleware((to) => {
-  const { authed } = useLnApp()
+  const auth = useAuthStore()
   const localePath = useLocalePath()
 
   const loginPath = localePath('/login')
   const isLogin = to.path === loginPath
 
-  if (!authed.value && !isLogin) {
+  if (!auth.authed && !isLogin) {
     return navigateTo(loginPath)
   }
-  if (authed.value && isLogin) {
+  if (auth.authed && isLogin) {
     return navigateTo(localePath('/'))
   }
 })
