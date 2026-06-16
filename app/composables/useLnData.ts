@@ -107,12 +107,11 @@ export const A_TXNS: AdminTxn[] = [
   { user: 'Nam', kind: 'Nạp xu', amt: '+230 xu', vnd: '₫20.000', method: 'PayOS', when: '16:11', ok: false },
 ]
 
-// Shared reactive app state (coins, messenger overlay, offline).
-// Auth lives in the Pinia store (useAuthStore), not here.
-const coins = ref(ME.coins)
+// Shared reactive app state (messenger overlay, offline).
+// Auth lives in the Pinia store (useAuthStore); coins in useWallet().
 const messengerOpen = ref(false)
 const offline = ref(false)
 
 export function useLnApp() {
-  return { coins, messengerOpen, offline }
+  return { messengerOpen, offline }
 }

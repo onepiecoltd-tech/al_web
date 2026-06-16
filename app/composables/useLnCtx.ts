@@ -1,9 +1,7 @@
-import type { InjectionKey, Ref } from 'vue'
+import type { InjectionKey } from 'vue'
 
 export interface LnCtx {
   go: (id: string) => void
-  coins: Ref<number>
-  addCoins: (n: number) => void
   openMessenger: () => void
 }
 

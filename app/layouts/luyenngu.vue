@@ -22,10 +22,11 @@ const TITLES: Record<string, string> = {
   '/blog': 'Blog', '/ho-so': 'Hồ sơ',
 }
 
-const { coins, messengerOpen, offline } = useLnApp()
+const { messengerOpen, offline } = useLnApp()
 const auth = useAuthStore()
 const { unread } = useNotifications()
 const { isAdmin } = useMe()
+const { coins } = useWallet()
 const notifOpen = ref(false)
 const localePath = useLocalePath()
 const route = useRoute()
@@ -46,8 +47,6 @@ function logout() {
 
 const ctx: LnCtx = {
   go: (id) => { navigateTo(localePath(NAV_PATH[id] || '/')) },
-  coins,
-  addCoins: (n) => { coins.value += n },
   openMessenger: () => { messengerOpen.value = true },
 }
 provide(LN_CTX, ctx)

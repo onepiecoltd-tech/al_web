@@ -1,10 +1,9 @@
 <script setup lang="ts">
 // Screen: Gặp gỡ — trò chuyện ngẫu nhiên người lạ (18+, có kiểm soát)
-import { useLnCtx } from '~/composables/useLnCtx'
 import type { Gift } from '~/types/api'
 
-const ctx = useLnCtx()
 const { data: gifts } = await useGifts()
+const { coins, gift: spendGift } = useWallet()
 
 const optIn = ref(false)
 const phase = ref<'setup' | 'searching' | 'session'>('setup')
@@ -29,12 +28,13 @@ const msgs = ref<{ them?: boolean; gift?: boolean; t: string }[]>([
   { them: true, t: 'Hi! Mình đang luyện Speaking, bạn target band mấy?' },
   { them: false, t: 'Mình target 7.0 😄 cùng luyện Part 2 nhé' },
 ])
-function sendGift(g: Gift) {
-  if (ctx.coins.value >= g.price) {
-    ctx.addCoins(-g.price)
+async function sendGift(g: Gift) {
+  try {
+    await spendGift(g.id)
     msgs.value.push({ gift: true, t: `Bạn đã tặng ${g.emoji} ${g.name}` })
     giftOpen.value = false
   }
+  catch { /* không đủ xu */ }
 }
 
 const gateRows: [string, string][] = [
@@ -163,7 +163,7 @@ const scopeLabel: Record<string, string> = { city: 'cùng tỉnh/thành', nearby
     </div>
 
     <LnDialog :open="giftOpen" @close="giftOpen = false">
-      <div class="flex items-center justify-between mb-1.5"><b class="font-display text-[1.3125rem] font-bold">Tặng quà</b><LnCoinsPill :amount="ctx.coins.value" /></div>
+      <div class="flex items-center justify-between mb-1.5"><b class="font-display text-[1.3125rem] font-bold">Tặng quà</b><LnCoinsPill :amount="coins" /></div>
       <p class="text-ink-3 font-body text-xs mb-3.5">Chỉ dành cho 18+ · có hạn mức mỗi phiên.</p>
       <div class="flex gap-1.5 flex-wrap">
         <button

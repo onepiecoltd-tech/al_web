@@ -2,15 +2,55 @@
 import { cn } from '~/lib/utils'
 import { type AvatarColor } from '~/composables/useLnData'
 import { useLnCtx } from '~/composables/useLnCtx'
-import type { Friend, Gift } from '~/types/api'
+import type { Friend, Gift, UserMini } from '~/types/api'
 
 const ctx = useLnCtx()
 const active = ref(0)
 const view = ref<'chat' | 'live'>('chat')
 const callOpen = ref(false)
 
-const { data: friends } = await useFetch<Friend[]>('/api/friends', { default: () => [] })
+const { data: friends, refresh: refreshFriends } = await useFetch<Friend[]>('/api/friends', { default: () => [] })
 const { data: gifts } = await useGifts()
+const { coins, gift: spendGift } = useWallet()
+
+// friend management dialog
+const friendDlg = ref(false)
+const searchQ = ref('')
+const searchResults = ref<UserMini[]>([])
+const friendBusy = ref(false)
+
+async function doSearch() {
+  searchResults.value = await $fetch<UserMini[]>('/api/users/search', { query: { q: searchQ.value } })
+}
+function openFriendDlg() {
+  searchQ.value = ''
+  friendDlg.value = true
+  doSearch()
+}
+watch(searchQ, doSearch)
+
+async function addFriend(u: UserMini) {
+  friendBusy.value = true
+  try {
+    await $fetch('/api/friends', { method: 'POST', body: { friend_id: u.id } })
+    await Promise.all([refreshFriends(), doSearch()])
+  }
+  finally {
+    friendBusy.value = false
+  }
+}
+async function removeFriend(f: Friend) {
+  friendBusy.value = true
+  try {
+    await $fetch(`/api/friends/${f.id}`, { method: 'DELETE' })
+    if (active.value >= friends.value.length - 1)
+      active.value = 0
+    await Promise.all([refreshFriends(), doSearch()])
+  }
+  finally {
+    friendBusy.value = false
+  }
+}
 const f = computed(() => friends.value[active.value])
 
 const avatarPalette: AvatarColor[] = ['son', 'reu', 'gold', 'ink']
@@ -22,11 +62,12 @@ const statusLabel: Record<string, string> = { online: 'Đang hoạt động', bu
 const liveChat = ref<{ n: string; t: string; gift?: boolean }[]>([
   { n: 'Linh', t: 'Cố lên Khánh! 🔥' }, { n: 'Nam', t: 'Trận này căng quá' }, { n: 'Phúc', t: 'gg 👏' },
 ])
-function sendGift(g: Gift) {
-  if (ctx.coins.value >= g.price) {
-    ctx.addCoins(-g.price)
+async function sendGift(g: Gift) {
+  try {
+    await spendGift(g.id)
     liveChat.value.push({ n: 'Bạn', t: `đã tặng ${g.emoji} ${g.name}`, gift: true })
   }
+  catch { /* không đủ xu — bỏ qua */ }
 }
 
 function openChat(i: number) { active.value = i; view.value = 'chat' }
@@ -36,7 +77,7 @@ function openChat(i: number) { active.value = i; view.value = 'chat' }
   <div class="grid grid-cols-[290px_minmax(0,1fr)] gap-4 h-[calc(100vh-60px-3rem)] max-[720px]:grid-cols-1 max-[720px]:h-auto">
     <!-- friends list -->
     <LnCard class="!p-0 flex flex-col overflow-hidden">
-      <div class="flex items-center justify-between px-3.5 pt-3.5 pb-2.5"><b class="font-body text-base font-bold">Bạn bè</b><LnBtn variant="ghost" size="sm" icon="user-plus" /></div>
+      <div class="flex items-center justify-between px-3.5 pt-3.5 pb-2.5"><b class="font-body text-base font-bold">Bạn bè</b><LnBtn variant="ghost" size="sm" icon="user-plus" @click="openFriendDlg" /></div>
       <div class="px-3 pb-2.5"><LnSearch placeholder="Tìm bạn…" /></div>
       <div class="px-3 pb-1.5">
         <LnBtn variant="secondary" icon="message-square-text" class="w-full" @click="ctx.openMessenger">Mở Messenger cổ điển</LnBtn>
@@ -81,7 +122,7 @@ function openChat(i: number) { active.value = i; view.value = 'chat' }
             </div>
           </div>
           <div class="p-2.5 border-t border-line">
-            <div class="flex items-center justify-between mb-2"><span class="text-ink-3 text-xs">Tặng quà</span><LnCoinsPill :amount="ctx.coins.value" /></div>
+            <div class="flex items-center justify-between mb-2"><span class="text-ink-3 text-xs">Tặng quà</span><LnCoinsPill :amount="coins" /></div>
             <div class="flex gap-1.5 flex-wrap">
               <button
                 v-for="g in gifts"
@@ -143,6 +184,41 @@ function openChat(i: number) { active.value = i; view.value = 'chat' }
         <LnIconBtn :size="46" class="bg-paper-2!"><LnIcon name="video" :size="20" /></LnIconBtn>
         <LnIconBtn :size="46" class="bg-error! text-white!" @click="callOpen = false"><LnIcon name="phone-off" :size="20" /></LnIconBtn>
         <LnIconBtn :size="46" class="bg-error! text-white!" title="Phát trực tiếp"><LnIcon name="radio" :size="20" /></LnIconBtn>
+      </div>
+    </LnDialog>
+
+    <!-- friend management dialog -->
+    <LnDialog :open="friendDlg" :width="460" @close="friendDlg = false">
+      <div class="flex items-center justify-between mb-3.5">
+        <b class="font-display text-[1.3125rem] font-bold">Quản lý bạn bè</b>
+        <LnIconBtn @click="friendDlg = false"><LnIcon name="x" :size="20" /></LnIconBtn>
+      </div>
+
+      <LnField v-model="searchQ" placeholder="Tìm theo tên, email hoặc @handle…" />
+
+      <div class="mt-3 max-h-[240px] overflow-y-auto">
+        <div v-if="searchResults.length" class="text-ink-3 text-xs font-semibold mb-1.5">Kết quả</div>
+        <div v-for="u in searchResults" :key="u.id" class="flex items-center gap-2.5 py-2 border-b border-line-soft last:border-0">
+          <LnAvatar :name="u.name" color="reu" :size="32" />
+          <div class="flex-1 min-w-0">
+            <div class="font-body text-[0.875rem] font-semibold">{{ u.name }}</div>
+            <div class="text-xs text-ink-3">{{ u.handle }} · ELO {{ u.elo }}</div>
+          </div>
+          <LnBtn variant="outline" size="sm" icon="user-plus" :disabled="friendBusy" @click="addFriend(u)">Kết bạn</LnBtn>
+        </div>
+        <p v-if="searchQ && !searchResults.length" class="text-ink-3 text-xs py-3">Không tìm thấy người dùng phù hợp.</p>
+      </div>
+
+      <div class="mt-4">
+        <div class="text-ink-3 text-xs font-semibold mb-1.5">Bạn bè ({{ friends.length }})</div>
+        <div v-for="f in friends" :key="f.id" class="flex items-center gap-2.5 py-2 border-b border-line-soft last:border-0">
+          <LnAvatar :name="f.name" color="son" :size="32" :status="f.presence" />
+          <div class="flex-1 min-w-0">
+            <div class="font-body text-[0.875rem] font-semibold">{{ f.name }}</div>
+            <div class="text-xs text-ink-3">{{ f.handle }}</div>
+          </div>
+          <LnBtn variant="ghost" size="sm" icon="user-minus" :disabled="friendBusy" @click="removeFriend(f)">Xóa</LnBtn>
+        </div>
       </div>
     </LnDialog>
   </div>

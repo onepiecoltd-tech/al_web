@@ -26,6 +26,23 @@ export interface Paginated<T> {
   meta: PageMeta
 }
 
+export interface RecentUser {
+  id: string
+  name: string
+  email: string
+  plan: string
+  created_at: string
+}
+
+export interface Overview {
+  users_total: number
+  pro_total: number
+  reports_open: number
+  exams_review: number
+  posts_total: number
+  recent_users: RecentUser[]
+}
+
 export interface AdminUser {
   id: string
   name: string
@@ -66,6 +83,35 @@ export interface AdminSetting {
   updated_at: string
 }
 
+export interface CoinPack {
+  id: string
+  vnd: number
+  coins: number
+  popular: boolean
+}
+
+export interface Transaction {
+  id: string
+  kind: string
+  coins: number
+  vnd: number
+  method: string
+  description: string
+  status: string
+  created_at: string
+}
+
+export interface AdminTransaction extends Transaction {
+  user: string
+}
+
+export interface RevenueSummary {
+  month_vnd: number
+  today_vnd: number
+  topups_month: number
+  pro_total: number
+}
+
 export interface Gift {
   id: string
   emoji: string
@@ -94,6 +140,13 @@ export interface Friend {
   msg: string
 }
 
+export interface UserMini {
+  id: string
+  name: string
+  handle: string
+  elo: number
+}
+
 export interface LeaderboardRow {
   id: string
   name: string
@@ -101,6 +154,14 @@ export interface LeaderboardRow {
   elo: number
   wins: number
   me: boolean
+}
+
+export interface Comment {
+  id: string
+  post_id: string
+  author: string
+  body: string
+  created_at: string
 }
 
 export interface BlogPost {

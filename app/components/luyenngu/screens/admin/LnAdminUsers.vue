@@ -2,13 +2,23 @@
 import type { AvatarColor } from '~/composables/useLnData'
 import type { AdminUser, Paginated } from '~/types/api'
 
-const q = ref('')
+const q = ref('') // bound to the input
+const debouncedQ = ref('') // drives the request, updated 300ms after typing stops
 const plan = ref<'all' | 'pro' | 'free'>('all')
 const page = ref(1)
-watch([q, plan], () => { page.value = 1 })
+
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
+watch(q, (v) => {
+  if (debounceTimer)
+    clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => { debouncedQ.value = v }, 300)
+})
+onBeforeUnmount(() => debounceTimer && clearTimeout(debounceTimer))
+
+watch([debouncedQ, plan], () => { page.value = 1 })
 
 const { data: res, refresh } = await useFetch<Paginated<AdminUser>>('/api/admin/users', {
-  query: { q, plan, page, limit: 10 },
+  query: { q: debouncedQ, plan, page, limit: 10 },
   default: () => ({ data: [], meta: { page: 1, limit: 10, total: 0, total_pages: 0 } }),
 })
 const rows = computed(() => res.value.data)

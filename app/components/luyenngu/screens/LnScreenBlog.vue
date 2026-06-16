@@ -2,7 +2,7 @@
 import { cn } from '~/lib/utils'
 import { ME } from '~/composables/useLnData'
 import { useLnCtx } from '~/composables/useLnCtx'
-import type { BlogPost, Paginated } from '~/types/api'
+import type { BlogPost, Comment, Paginated } from '~/types/api'
 
 const ctx = useLnCtx()
 const open = ref<number | null>(null)
@@ -26,10 +26,30 @@ function fmtReads(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
 }
 
-const comments = [
-  { n: 'Khánh', c: 'reu' as const, t: 'Khung 4 ý cực hữu ích, mình áp dụng thử band tăng hẳn. Ai muốn so tài Part 2 không? 😎' },
-  { n: 'Linh', c: 'ink' as const, t: 'Phần từ nối tự nhiên là thứ mình hay quên. Cảm ơn tác giả!' },
-]
+const comments = ref<Comment[]>([])
+const commentBody = ref('')
+const sending = ref(false)
+
+const commentPalette = ['son', 'reu', 'gold', 'ink'] as const
+
+watch(() => post.value?.id, async (id) => {
+  comments.value = id ? await $fetch<Comment[]>(`/api/blog/${id}/comments`) : []
+})
+
+async function sendComment() {
+  const id = post.value?.id
+  if (!id || !commentBody.value.trim())
+    return
+  sending.value = true
+  try {
+    await $fetch(`/api/blog/${id}/comments`, { method: 'POST', body: { body: commentBody.value } })
+    commentBody.value = ''
+    comments.value = await $fetch<Comment[]>(`/api/blog/${id}/comments`)
+  }
+  finally {
+    sending.value = false
+  }
+}
 </script>
 
 <template>
@@ -57,21 +77,22 @@ const comments = [
     </div>
 
     <div class="mt-7">
-      <b class="font-display text-[1.3125rem] font-bold">Bình luận ({{ post.comments }})</b>
+      <b class="font-display text-[1.3125rem] font-bold">Bình luận ({{ comments.length }})</b>
       <div class="flex gap-2.5 mt-3.5">
         <LnAvatar :name="ME.name" color="son" :size="38" />
-        <input class="flex-1 px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] placeholder:text-ink-4 focus:outline-none focus:border-son" placeholder="Viết bình luận…">
-        <LnBtn variant="primary">Gửi</LnBtn>
+        <input v-model="commentBody" class="flex-1 px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] placeholder:text-ink-4 focus:outline-none focus:border-son" placeholder="Viết bình luận…" @keyup.enter="sendComment">
+        <LnBtn variant="primary" :disabled="sending || !commentBody.trim()" @click="sendComment">Gửi</LnBtn>
       </div>
       <div class="mt-[18px]">
-        <div v-for="(cm, i) in comments" :key="i" class="flex gap-3 py-3.5 border-b border-line-soft last:border-0">
-          <LnAvatar :name="cm.n" :color="cm.c" :size="38" />
+        <p v-if="!comments.length" class="text-ink-3 text-sm py-4">Chưa có bình luận. Hãy là người đầu tiên!</p>
+        <div v-for="(cm, i) in comments" :key="cm.id" class="flex gap-3 py-3.5 border-b border-line-soft last:border-0">
+          <LnAvatar :name="cm.author" :color="commentPalette[i % commentPalette.length]" :size="38" />
           <div class="flex-1">
             <div class="flex items-center justify-between">
-              <span class="font-body text-[0.8125rem] font-semibold">{{ cm.n }}</span>
-              <LnBtn variant="ghost" size="sm" class="!px-2.5 !py-1" @click="ctx.go('thach-dau')">⚔️ Thách đấu</LnBtn>
+              <span class="font-body text-[0.8125rem] font-semibold">{{ cm.author }}</span>
+              <span class="text-ink-3 text-xs">{{ fmtDate(cm.created_at) }}</span>
             </div>
-            <p class="font-body text-[0.9375rem] text-ink-2 mt-1">{{ cm.t }}</p>
+            <p class="font-body text-[0.9375rem] text-ink-2 mt-1">{{ cm.body }}</p>
           </div>
         </div>
       </div>

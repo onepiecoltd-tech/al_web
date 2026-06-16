@@ -4,26 +4,28 @@ const mode = ref<'login' | 'register'>('login')
 const stats: [string, string][] = [['12.4k', 'người học'], ['380k', 'trận đấu'], ['4.8★', 'đánh giá']]
 
 const auth = useAuthStore()
+const { data: status } = useStatus()
+const canSignup = computed(() => status.value.allow_signup)
+const name = ref('')
 const email = ref('minhanh@email.com')
 const password = ref('password')
 const loading = ref(false)
 const error = ref('')
 
 async function submit() {
-  // Register/OTP/Google chưa nối backend — giữ luồng mock cũ.
-  if (mode.value === 'register') {
-    emit('login')
-    return
-  }
   error.value = ''
   loading.value = true
   try {
-    await auth.login(email.value, password.value)
+    if (mode.value === 'register')
+      await auth.register(email.value, name.value, password.value)
+    else
+      await auth.login(email.value, password.value)
     emit('login')
   }
   catch (e) {
     const err = e as { data?: { statusMessage?: string }, statusMessage?: string }
-    error.value = err.data?.statusMessage ?? err.statusMessage ?? 'Đăng nhập thất bại. Vui lòng thử lại.'
+    error.value = err.data?.statusMessage ?? err.statusMessage
+      ?? (mode.value === 'register' ? 'Đăng ký thất bại. Vui lòng thử lại.' : 'Đăng nhập thất bại. Vui lòng thử lại.')
   }
   finally {
     loading.value = false
@@ -72,23 +74,24 @@ async function submit() {
         </div>
 
         <div class="flex flex-col gap-3.5">
-          <LnField v-if="mode === 'register'" label="Tên hiển thị" placeholder="VD: Minh Anh" />
+          <LnField v-if="mode === 'register'" v-model="name" label="Tên hiển thị" placeholder="VD: Minh Anh" />
           <LnField v-model="email" label="Email" type="email" placeholder="ban@email.com" />
           <LnField v-model="password" label="Mật khẩu" type="password" placeholder="••••••••" :error="error || undefined" :hint="mode === 'login' ? undefined : 'Tối thiểu 8 ký tự.'" @keyup.enter="submit" />
           <LnBtn variant="primary" size="lg" class="w-full" :disabled="loading" @click="submit">
-            {{ loading ? 'Đang đăng nhập…' : (mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản') }}
+            {{ loading ? 'Đang xử lý…' : (mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản') }}
           </LnBtn>
           <LnBtn variant="ghost" size="sm" icon="mail" class="w-full" @click="emit('login')">
             Đăng nhập bằng mã OTP qua email
           </LnBtn>
         </div>
 
-        <p class="text-ink-3 text-xs text-center mt-5">
+        <p v-if="canSignup" class="text-ink-3 text-xs text-center mt-5">
           {{ mode === 'login' ? 'Chưa có tài khoản? ' : 'Đã có tài khoản? ' }}
           <a class="cursor-pointer font-bold text-son" @click="mode = mode === 'login' ? 'register' : 'login'">
             {{ mode === 'login' ? 'Đăng ký' : 'Đăng nhập' }}
           </a>
         </p>
+        <p v-else class="text-ink-3 text-xs text-center mt-5">Đăng ký hiện đang tạm đóng.</p>
       </div>
     </div>
   </div>

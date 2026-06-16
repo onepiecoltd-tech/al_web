@@ -25,11 +25,20 @@ export const useAuthStore = defineStore('auth', () => {
     flag.value = '1' // reflect the cookie the server just set, without a reload
   }
 
+  async function register(email: string, name: string, password: string) {
+    const res = await $fetch<{ user: AuthUser }>('/api/auth/register', {
+      method: 'POST',
+      body: { email, name, password },
+    })
+    user.value = res.user
+    flag.value = '1'
+  }
+
   async function logout() {
     await $fetch('/api/auth/logout', { method: 'POST' })
     user.value = null
     flag.value = null
   }
 
-  return { user, authed, login, logout }
+  return { user, authed, login, register, logout }
 })
