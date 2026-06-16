@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
-import type { CoinPack, Transaction } from '~/types/api'
+import type { Badge, CoinPack, Transaction } from '~/types/api'
 
 const { me } = useMe()
 const { coins, topup: doTopup } = useWallet()
@@ -14,6 +14,7 @@ function fmtTxnTime(iso: string) {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} · ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+const toast = useToast()
 const buying = ref(false)
 async function buy(packId: string) {
   buying.value = true
@@ -21,12 +22,22 @@ async function buy(packId: string) {
     await doTopup(packId)
     await refreshTxns()
     topup.value = false
+    toast.ok('Nạp xu thành công!')
+  }
+  catch {
+    toast.err('Nạp xu thất bại. Vui lòng thử lại.')
   }
   finally {
     buying.value = false
   }
 }
-const settings = reactive({ show_online: true, allow_stranger_challenge: true, allow_stranger_chat: false, notify_on_friend_live: false })
+const settings = reactive<Record<string, boolean>>({ show_online: true, allow_stranger_challenge: true, allow_stranger_chat: false, notify_on_friend_live: false })
+const { data: prefs } = await useFetch<Record<string, boolean>>('/api/me/prefs', { default: () => ({}) })
+Object.assign(settings, prefs.value)
+async function setPref(key: string, value: boolean) {
+  settings[key] = value
+  await $fetch('/api/me/prefs', { method: 'PUT', body: { ...settings } })
+}
 
 const settingsRows: [keyof typeof settings, string, string][] = [
   ['show_online', 'Hiện đang online', 'Bạn bè thấy chấm xanh trạng thái của bạn.'],
@@ -35,10 +46,7 @@ const settingsRows: [keyof typeof settings, string, string][] = [
   ['notify_on_friend_live', 'Thông báo khi bạn bè livestream', 'Nhận thông báo go-live từ bạn bè.'],
 ]
 
-const badges: [string, string, string][] = [
-  ['🔥', 'Streak 7+', 'son'], ['🏆', 'Top 20 tuần', 'gold'], ['🎤', 'Speaking 6.5', 'reu'], ['⚔️', '40 trận thắng', 'son'],
-  ['📚', '300 lượt luyện', 'reu'], ['💎', 'Nhà hảo tâm', 'gold'], ['🎓', 'Hoàn thành 10 đề', 'reu'], ['⭐', 'Tân binh', 'ink'],
-]
+const { data: badges } = await useFetch<Badge[]>('/api/me/badges', { default: () => [] })
 const badgeBg: Record<string, string> = { son: 'bg-son-soft', gold: 'bg-gold-soft', reu: 'bg-reu-soft', ink: 'bg-paper-3' }
 
 </script>
@@ -67,16 +75,16 @@ const badgeBg: Record<string, string> = { son: 'bg-son-soft', gold: 'bg-gold-sof
       <LnStat icon="swords" k="Trận thắng" v="41" />
       <LnStat icon="target" k="Tỉ lệ thắng" v="64%" />
       <LnStat icon="book-open" k="Lượt luyện" v="312" />
-      <LnStat icon="award" k="Huy hiệu" v="8" />
+      <LnStat icon="award" k="Huy hiệu" :v="badges.length" />
     </div>
 
     <!-- badges -->
     <LnCard>
       <b class="font-body text-base font-bold">Huy hiệu</b>
       <div class="flex gap-3.5 flex-wrap mt-3.5">
-        <div v-for="[e, n, c] in badges" :key="n" class="text-center w-[76px]">
-          <div class="grid place-items-center w-14 h-14 mx-auto rounded-lg-ln text-[1.6rem]" :class="badgeBg[c]">{{ e }}</div>
-          <div class="text-xs text-ink-3 mt-1.5">{{ n }}</div>
+        <div v-for="b in badges" :key="b.id" class="text-center w-[76px]">
+          <div class="grid place-items-center w-14 h-14 mx-auto rounded-lg-ln text-[1.6rem]" :class="badgeBg[b.tone]">{{ b.emoji }}</div>
+          <div class="text-xs text-ink-3 mt-1.5">{{ b.name }}</div>
         </div>
       </div>
     </LnCard>
@@ -123,7 +131,7 @@ const badgeBg: Record<string, string> = { son: 'bg-son-soft', gold: 'bg-gold-sof
           <div class="mt-1.5">
             <div v-for="[k, t, d] in settingsRows" :key="k" class="flex items-center justify-between gap-4 py-3 border-b border-line-soft last:border-0">
               <div class="flex-1"><div class="font-body text-base font-semibold">{{ t }}</div><div class="text-xs text-ink-3 mt-px">{{ d }}</div></div>
-              <LnSwitch v-model="settings[k]" />
+              <LnSwitch :model-value="settings[k] ?? false" @update:model-value="(v: boolean) => setPref(k, v)" />
             </div>
           </div>
         </LnCard>

@@ -2,6 +2,7 @@
 import type { Friend } from '~/types/api'
 
 const emit = defineEmits<{ exit: [] }>()
+const { me } = useMe()
 const { data: friends } = useFetch<Friend[]>('/api/friends', { default: () => [] })
 const online = computed(() => friends.value.filter(f => f.presence !== 'offline'))
 const offline = computed(() => friends.value.filter(f => f.presence === 'offline'))
@@ -18,7 +19,7 @@ const emojis = ['😀', '😄', '😉', '😎', '😍', '😜', '😢', '😡', 
         <div class="xp-title"><span class="x-logo">☺</span>LuyệnNgữ Messenger<span class="x-btns"><i>_</i><i>▢</i><i class="close" @click="emit('exit')">✕</i></span></div>
         <div class="xp-myrow">
           <span class="smiley" style="width:26px;height:26px"><i class="l" /><i class="r" /></span>
-          <div><div class="me-nm">Minh Anh</div><div class="me-st">▾ Sẵn sàng luyện đề ✦</div></div>
+          <div><div class="me-nm">{{ me?.name }}</div><div class="me-st">▾ Sẵn sàng luyện đề ✦</div></div>
         </div>
         <div class="xp-list">
           <div class="xp-grp">Bạn bè ({{ online.length }}/{{ friends.length }})</div>
@@ -36,10 +37,10 @@ const emojis = ['😀', '😄', '😉', '😎', '😍', '😜', '😢', '😡', 
         <div class="xp-body">
           <div class="xp-log">
             <div class="ln"><b class="them">Thu Hà:</b> Tối nay luyện Part 2 nhé?</div>
-            <div class="ln"><b class="me">Minh Anh:</b> Ok mình mở phòng đây</div>
+            <div class="ln"><b class="me">{{ me?.name }}:</b> Ok mình mở phòng đây</div>
             <div class="ln"><b class="them">Thu Hà:</b> Sẵn đấu phát âm luôn 😄</div>
             <div class="ln buzz">*** BUZZ!!! ***</div>
-            <div class="ln"><b class="me">Minh Anh:</b> Hahaha vào liền 🔥</div>
+            <div class="ln"><b class="me">{{ me?.name }}:</b> Hahaha vào liền 🔥</div>
           </div>
           <div class="xp-toolbar">
             <i title="Emoji">☺</i><i title="Đậm"><b>B</b></i><i title="Nghiêng"><span style="font-style:italic">I</span></i><i title="Webcam">📷</i><i title="Live">📹</i>

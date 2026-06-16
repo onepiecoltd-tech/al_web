@@ -1,17 +1,22 @@
 <script setup lang="ts">
 import type { AvatarColor } from '~/composables/useLnData'
 
+const { me } = useMe()
 interface Member { name: string; color: AvatarColor; xp: number; live: number; me?: boolean }
 const members: Member[] = [
   { name: 'Khánh', color: 'reu', xp: 4820, live: 92 },
-  { name: 'Minh Anh', color: 'son', xp: 4510, live: 78, me: true },
   { name: 'Thu Hà', color: 'son', xp: 3990, live: 64 },
   { name: 'Linh', color: 'ink', xp: 3120, live: 41 },
   { name: 'Nam', color: 'gold', xp: 2870, live: 0 },
 ]
+const allMembers = computed<Member[]>(() =>
+  me.value
+    ? [{ name: me.value.name, color: 'son', xp: 4510, live: 78, me: true }, ...members]
+    : members,
+)
 
-const liveBoard = members.filter(m => m.live > 0).sort((a, b) => b.live - a.live)
-const xpBoard = [...members].sort((a, b) => b.xp - a.xp)
+const liveBoard = computed(() => allMembers.value.filter(m => m.live > 0).sort((a, b) => b.live - a.live))
+const xpBoard = computed(() => [...allMembers.value].sort((a, b) => b.xp - a.xp))
 const groups: [string, number, string, boolean][] = [['Lớp luyện IELTS tối', 5, 'NGU-2026', true], ['TOEIC 900 club', 12, 'TOE-900', false]]
 
 const joinCode = ref('')

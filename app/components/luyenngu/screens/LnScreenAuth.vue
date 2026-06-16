@@ -4,11 +4,20 @@ const mode = ref<'login' | 'register'>('login')
 const stats: [string, string][] = [['12.4k', 'người học'], ['380k', 'trận đấu'], ['4.8★', 'đánh giá']]
 
 const auth = useAuthStore()
+const toast = useToast()
 const { data: status } = useStatus()
 const canSignup = computed(() => status.value.allow_signup)
 const name = ref('')
-const email = ref('minhanh@email.com')
-const password = ref('password')
+const email = ref('')
+const password = ref('')
+
+function switchMode(m: 'login' | 'register') {
+  mode.value = m
+  name.value = ''
+  email.value = ''
+  password.value = ''
+  error.value = ''
+}
 const loading = ref(false)
 const error = ref('')
 
@@ -16,10 +25,14 @@ async function submit() {
   error.value = ''
   loading.value = true
   try {
-    if (mode.value === 'register')
+    if (mode.value === 'register') {
       await auth.register(email.value, name.value, password.value)
-    else
+      toast.ok('Đăng ký thành công! Chào mừng bạn.')
+    }
+    else {
       await auth.login(email.value, password.value)
+      toast.ok('Đăng nhập thành công!')
+    }
     emit('login')
   }
   catch (e) {
@@ -65,29 +78,29 @@ async function submit() {
         <h2 class="font-display font-bold text-[1.75rem] mb-1">{{ mode === 'login' ? 'Chào mừng trở lại' : 'Tạo tài khoản' }}</h2>
         <p class="text-ink-3 font-body text-[0.9375rem] mb-[22px]">{{ mode === 'login' ? 'Đăng nhập để tiếp tục luyện ngữ.' : 'Miễn phí — nâng cấp Pro bất cứ lúc nào.' }}</p>
 
-        <button type="button" class="w-full justify-center mb-3.5 inline-flex items-center gap-2 rounded-full border border-line-strong bg-paper-0 text-ink font-body font-bold px-[26px] py-3.5 text-[0.9rem] cursor-pointer transition-colors hover:bg-paper-2">
+        <!-- <button type="button" class="w-full justify-center mb-3.5 inline-flex items-center gap-2 rounded-full border border-line-strong bg-paper-0 text-ink font-body font-bold px-[26px] py-3.5 text-[0.9rem] cursor-pointer transition-colors hover:bg-paper-2">
           <span class="grid place-items-center w-[18px] h-[18px] rounded-full bg-white border border-line font-extrabold text-xs text-son">G</span>
           Tiếp tục với Google
         </button>
         <div class="flex items-center gap-3 my-3.5">
           <div class="flex-1 h-px bg-line" /><span class="text-ink-3 text-xs">hoặc</span><div class="flex-1 h-px bg-line" />
-        </div>
+        </div> -->
 
         <div class="flex flex-col gap-3.5">
           <LnField v-if="mode === 'register'" v-model="name" label="Tên hiển thị" placeholder="VD: Minh Anh" />
           <LnField v-model="email" label="Email" type="email" placeholder="ban@email.com" />
-          <LnField v-model="password" label="Mật khẩu" type="password" placeholder="••••••••" :error="error || undefined" :hint="mode === 'login' ? undefined : 'Tối thiểu 8 ký tự.'" @keyup.enter="submit" />
+          <LnField v-model="password" label="Mật khẩu" type="password" placeholder="••••••••" :error="error || undefined" :hint="mode === 'login' ? undefined : 'Tối thiểu 6 ký tự.'" @keyup.enter="submit" />
           <LnBtn variant="primary" size="lg" class="w-full" :disabled="loading" @click="submit">
             {{ loading ? 'Đang xử lý…' : (mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản') }}
           </LnBtn>
-          <LnBtn variant="ghost" size="sm" icon="mail" class="w-full" @click="emit('login')">
+          <!-- <LnBtn variant="ghost" size="sm" icon="mail" class="w-full" @click="emit('login')">
             Đăng nhập bằng mã OTP qua email
-          </LnBtn>
+          </LnBtn> -->
         </div>
 
         <p v-if="canSignup" class="text-ink-3 text-xs text-center mt-5">
           {{ mode === 'login' ? 'Chưa có tài khoản? ' : 'Đã có tài khoản? ' }}
-          <a class="cursor-pointer font-bold text-son" @click="mode = mode === 'login' ? 'register' : 'login'">
+          <a class="cursor-pointer font-bold text-son" @click="switchMode(mode === 'login' ? 'register' : 'login')">
             {{ mode === 'login' ? 'Đăng ký' : 'Đăng nhập' }}
           </a>
         </p>

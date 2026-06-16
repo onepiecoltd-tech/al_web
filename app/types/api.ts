@@ -83,6 +83,13 @@ export interface AdminSetting {
   updated_at: string
 }
 
+export interface Badge {
+  id: string
+  emoji: string
+  name: string
+  tone: 'son' | 'gold' | 'reu' | 'ink'
+}
+
 export interface CoinPack {
   id: string
   vnd: number

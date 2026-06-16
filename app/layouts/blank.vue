@@ -4,4 +4,5 @@ useHead({ bodyAttrs: { class: 'luyenngu font-body' } })
 
 <template>
   <slot />
+  <LnToastStack />
 </template>

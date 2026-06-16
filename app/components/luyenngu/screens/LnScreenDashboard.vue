@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { ME, type AvatarColor } from '~/composables/useLnData'
+import { type AvatarColor } from '~/composables/useLnData'
 import { useLnCtx } from '~/composables/useLnCtx'
 import type { Friend } from '~/types/api'
 
 const ctx = useLnCtx()
-const firstName = ME.name.split(' ').slice(-1)[0]
+const { me } = useMe()
+const firstName = computed(() => (me.value?.name ?? '').split(' ').slice(-1)[0] || 'bạn')
+
+const today = computed(() => {
+  const d = new Date()
+  const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
+  return `${days[d.getDay()]} · ${d.getDate()} tháng ${d.getMonth() + 1}`
+})
 
 const { data: friends } = await useFetch<Friend[]>('/api/friends', { default: () => [] })
 const onlineFriends = computed(() => friends.value.filter(f => f.presence !== 'offline'))
@@ -35,16 +42,16 @@ const activity = [
     <!-- greeting -->
     <div class="flex items-center justify-between gap-3">
       <div>
-        <div class="text-xs font-extrabold uppercase tracking-[0.12em] text-son">Thứ Hai · 9 tháng 6</div>
+        <div class="text-xs font-extrabold uppercase tracking-[0.12em] text-son">{{ today }}</div>
         <h2 class="font-display font-extrabold text-[2rem] mt-1">Chào {{ firstName }} 👋</h2>
       </div>
-      <LnBadge tone="gold" status class="text-[0.8rem] px-3 py-1.5">🔥 {{ ME.streak }} ngày streak</LnBadge>
+      <LnBadge tone="gold" status class="text-[0.8rem] px-3 py-1.5">🔥 {{ me?.streak ?? 0 }} ngày streak</LnBadge>
     </div>
 
     <!-- stats -->
     <div class="grid grid-cols-4 gap-3 max-[1040px]:grid-cols-2 max-[720px]:grid-cols-1">
-      <LnStat icon="flame" k="Streak" :v="ME.streak" d="kỷ lục: 21 ngày" />
-      <LnStat icon="trophy" k="ELO · Hạng Vàng" :v="ME.elo" d="+8 tuần này" dtone="up" />
+      <LnStat icon="flame" k="Streak" :v="me?.streak ?? 0" d="kỷ lục: 21 ngày" />
+      <LnStat icon="trophy" :k="`ELO · Hạng ${me?.rank ?? ''}`" :v="me?.elo ?? 0" d="+8 tuần này" dtone="up" />
       <LnStat icon="target" k="Tỉ lệ thắng" v="64%" d="41 thắng / 23 thua" />
       <LnStat icon="book-open" k="Lượt luyện" v="312" d="+18 tuần này" dtone="up" />
     </div>

@@ -4,6 +4,7 @@ import type { Gift } from '~/types/api'
 
 const { data: gifts } = await useGifts()
 const { coins, gift: spendGift } = useWallet()
+const toast = useToast()
 
 const optIn = ref(false)
 const phase = ref<'setup' | 'searching' | 'session'>('setup')
@@ -33,8 +34,9 @@ async function sendGift(g: Gift) {
     await spendGift(g.id)
     msgs.value.push({ gift: true, t: `Bạn đã tặng ${g.emoji} ${g.name}` })
     giftOpen.value = false
+    toast.ok(`Đã tặng ${g.emoji} ${g.name}!`)
   }
-  catch { /* không đủ xu */ }
+  catch { toast.err('Không đủ xu để tặng quà.') }
 }
 
 const gateRows: [string, string][] = [

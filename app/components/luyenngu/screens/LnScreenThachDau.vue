@@ -5,6 +5,7 @@ import { useLnCtx } from '~/composables/useLnCtx'
 import type { LeaderboardRow } from '~/types/api'
 
 const ctx = useLnCtx()
+const { me } = useMe()
 const { data: board } = await useFetch<LeaderboardRow[]>('/api/leaderboard', { default: () => [] })
 
 const avatarPalette: AvatarColor[] = ['son', 'reu', 'gold', 'ink']
@@ -44,8 +45,8 @@ const rankColor = (i: number) => ['text-gold-deep', 'text-[#8d8d8d]', 'text-[#a9
     <div class="relative overflow-hidden bg-ink text-white rounded-xl-ln p-10 before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(220,74,51,.32),transparent_60%)]">
       <div class="relative grid grid-cols-[1fr_auto_1fr] items-center gap-4">
         <div class="text-center">
-          <div class="w-16 h-16 rounded-full mx-auto mb-2.5 grid place-items-center font-display font-extrabold text-[1.2rem] bg-son">M</div>
-          <div class="font-body text-base font-bold">Minh Anh</div><div class="text-xs text-white/60 mt-0.5">ELO 1.482 · Vàng</div>
+          <div class="w-16 h-16 rounded-full mx-auto mb-2.5 grid place-items-center font-display font-extrabold text-[1.2rem] bg-son">{{ (me?.name ?? '?')[0] }}</div>
+          <div class="font-body text-base font-bold">{{ me?.name }}</div><div class="text-xs text-white/60 mt-0.5">ELO {{ me?.elo }} · {{ me?.rank }}</div>
         </div>
         <div class="font-display font-black text-2xl leading-none italic text-son-bright">VS</div>
         <div class="text-center">

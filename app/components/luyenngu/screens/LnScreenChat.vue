@@ -9,9 +9,11 @@ const active = ref(0)
 const view = ref<'chat' | 'live'>('chat')
 const callOpen = ref(false)
 
+const { me } = useMe()
 const { data: friends, refresh: refreshFriends } = await useFetch<Friend[]>('/api/friends', { default: () => [] })
 const { data: gifts } = await useGifts()
 const { coins, gift: spendGift } = useWallet()
+const toast = useToast()
 
 // friend management dialog
 const friendDlg = ref(false)
@@ -34,6 +36,10 @@ async function addFriend(u: UserMini) {
   try {
     await $fetch('/api/friends', { method: 'POST', body: { friend_id: u.id } })
     await Promise.all([refreshFriends(), doSearch()])
+    toast.ok(`Đã thêm ${u.name} vào danh sách bạn bè.`)
+  }
+  catch {
+    toast.err('Không thể thêm bạn. Vui lòng thử lại.')
   }
   finally {
     friendBusy.value = false
@@ -46,6 +52,10 @@ async function removeFriend(f: Friend) {
     if (active.value >= friends.value.length - 1)
       active.value = 0
     await Promise.all([refreshFriends(), doSearch()])
+    toast.info(`Đã xóa ${f.name} khỏi danh sách bạn bè.`)
+  }
+  catch {
+    toast.err('Không thể xóa bạn. Vui lòng thử lại.')
   }
   finally {
     friendBusy.value = false
@@ -66,8 +76,9 @@ async function sendGift(g: Gift) {
   try {
     await spendGift(g.id)
     liveChat.value.push({ n: 'Bạn', t: `đã tặng ${g.emoji} ${g.name}`, gift: true })
+    toast.ok(`Đã tặng ${g.emoji} ${g.name}!`)
   }
-  catch { /* không đủ xu — bỏ qua */ }
+  catch { toast.err('Không đủ xu để tặng quà.') }
 }
 
 function openChat(i: number) { active.value = i; view.value = 'chat' }
@@ -108,7 +119,7 @@ function openChat(i: number) { active.value = i; view.value = 'chat' }
             <span class="inline-flex items-center bg-black/50 text-white rounded-[5px] px-2 py-[3px] text-xs font-bold"><LnIcon name="eye" :size="12" class="mr-1" />342</span>
           </span>
           <button type="button" class="absolute top-2.5 right-2.5 z-[2] grid place-items-center w-9 h-9 rounded-md-ln text-white hover:bg-white/10" @click="view = 'chat'"><LnIcon name="x" :size="20" /></button>
-          <div v-for="[n, c] in ([['Minh Anh', 'son'], ['Khánh', 'reu']] as const)" :key="n" class="grid place-items-center relative rounded-lg overflow-hidden" style="background: linear-gradient(160deg,#322a24,#1f1a16)">
+          <div v-for="[n, c] in ([[me?.name ?? '', 'son'], [f?.name ?? '', 'reu']] as const)" :key="n" class="grid place-items-center relative rounded-lg overflow-hidden" style="background: linear-gradient(160deg,#322a24,#1f1a16)">
             <LnAvatar :name="n" :color="c" :size="64" />
             <span class="absolute left-2.5 bottom-2.5 text-xs text-white bg-black/45 px-2 py-0.5 rounded-md">{{ n }}</span>
           </div>

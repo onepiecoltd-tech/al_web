@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
-import { ME, useLnApp } from '~/composables/useLnData'
+import { useLnApp } from '~/composables/useLnData'
 import { LN_CTX, NAV_PATH, type LnCtx } from '~/composables/useLnCtx'
 import LnMessengerOverlay from '~/components/luyenngu/screens/LnMessengerOverlay.vue'
 
@@ -25,7 +25,7 @@ const TITLES: Record<string, string> = {
 const { messengerOpen, offline } = useLnApp()
 const auth = useAuthStore()
 const { unread } = useNotifications()
-const { isAdmin } = useMe()
+const { me, isAdmin } = useMe()
 const { coins } = useWallet()
 const notifOpen = ref(false)
 const localePath = useLocalePath()
@@ -80,10 +80,10 @@ provide(LN_CTX, ctx)
       <div class="border-t border-line pt-3 mt-3 max-[720px]:hidden">
         <div class="flex items-center gap-2.5 px-2 py-[7px] rounded-md-ln">
           <NuxtLink :to="localePath('/ho-so')" class="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer">
-            <LnAvatar :name="ME.name" color="son" :size="36" status="online" />
+            <LnAvatar :name="me?.name ?? ''" color="son" :size="36" status="online" />
             <div class="min-w-0 flex-1">
-              <div class="font-body text-[0.8125rem] font-bold truncate">{{ ME.name }}</div>
-              <div class="text-xs text-ink-3">{{ ME.handle }} · ELO {{ ME.elo }}</div>
+              <div class="font-body text-[0.8125rem] font-bold truncate">{{ me?.name }}</div>
+              <div class="text-xs text-ink-3">{{ me?.handle }} · ELO {{ me?.elo }}</div>
             </div>
           </NuxtLink>
           <LnIconBtn :size="32" title="Đăng xuất" @click="logout">
@@ -117,7 +117,7 @@ provide(LN_CTX, ctx)
             class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 grid place-items-center rounded-full bg-son text-white text-[0.65rem] font-bold tabular-nums pointer-events-none"
           >{{ unread > 9 ? '9+' : unread }}</span>
         </div>
-        <LnAvatar :name="ME.name" color="son" :size="36" status="online" />
+        <LnAvatar :name="me?.name ?? ''" color="son" :size="36" status="online" />
       </header>
 
       <LnNotifPopover :open="notifOpen" @close="notifOpen = false" />
@@ -129,5 +129,6 @@ provide(LN_CTX, ctx)
     </div>
 
     <LnMessengerOverlay v-if="messengerOpen" @exit="messengerOpen = false" />
+    <LnToastStack />
   </div>
 </template>

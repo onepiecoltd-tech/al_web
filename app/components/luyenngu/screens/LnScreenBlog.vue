@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
-import { ME } from '~/composables/useLnData'
 import { useLnCtx } from '~/composables/useLnCtx'
 import type { BlogPost, Comment, Paginated } from '~/types/api'
 
 const ctx = useLnCtx()
+const { me } = useMe()
 const open = ref<number | null>(null)
 const cats = ['Tất cả', 'IELTS', 'TOEIC', 'Phương pháp', 'Câu chuyện']
 
@@ -29,6 +29,7 @@ function fmtReads(n: number) {
 const comments = ref<Comment[]>([])
 const commentBody = ref('')
 const sending = ref(false)
+const toast = useToast()
 
 const commentPalette = ['son', 'reu', 'gold', 'ink'] as const
 
@@ -45,6 +46,10 @@ async function sendComment() {
     await $fetch(`/api/blog/${id}/comments`, { method: 'POST', body: { body: commentBody.value } })
     commentBody.value = ''
     comments.value = await $fetch<Comment[]>(`/api/blog/${id}/comments`)
+    toast.ok('Đã đăng bình luận.')
+  }
+  catch {
+    toast.err('Không thể gửi bình luận. Vui lòng thử lại.')
   }
   finally {
     sending.value = false
@@ -79,7 +84,7 @@ async function sendComment() {
     <div class="mt-7">
       <b class="font-display text-[1.3125rem] font-bold">Bình luận ({{ comments.length }})</b>
       <div class="flex gap-2.5 mt-3.5">
-        <LnAvatar :name="ME.name" color="son" :size="38" />
+        <LnAvatar :name="me?.name ?? ''" color="son" :size="38" />
         <input v-model="commentBody" class="flex-1 px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] placeholder:text-ink-4 focus:outline-none focus:border-son" placeholder="Viết bình luận…" @keyup.enter="sendComment">
         <LnBtn variant="primary" :disabled="sending || !commentBody.trim()" @click="sendComment">Gửi</LnBtn>
       </div>
