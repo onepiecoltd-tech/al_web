@@ -78,7 +78,7 @@ function fmtTime(iso: string) {
         </table>
       </div>
       <div class="flex justify-end mt-3.5">
-        <LnPager v-model:page="page" :total-pages="totalPages" />
+        <LnPager v-model:page="page" :total-pages="totalPages" :total="res.meta.total" />
       </div>
     </LnCard>
   </div>

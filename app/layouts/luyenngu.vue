@@ -65,7 +65,7 @@ provide(LN_CTX, ctx)
         <NuxtLink
           v-for="n in NAV"
           :key="n.id"
-          :to="localePath(NAV_PATH[n.id])"
+          :to="localePath(NAV_PATH[n.id] ?? '/')"
           :class="cn(
             'relative flex items-center gap-[11px] px-[11px] py-[9px] rounded-md-ln text-ink-2 font-body text-[0.8125rem] font-semibold cursor-pointer transition-colors duration-150 hover:bg-paper-2 hover:text-ink text-left w-full',
             'max-[720px]:flex-col max-[720px]:gap-[3px] max-[720px]:text-[0.6rem] max-[720px]:px-1 max-[720px]:py-[5px]',

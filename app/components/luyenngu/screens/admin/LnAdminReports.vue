@@ -23,13 +23,16 @@ function fmtAgo(iso: string) {
   return `${Math.floor(diff / 86400)} ngày trước`
 }
 
+const toast = useToast()
 const busy = ref<string | null>(null)
 async function resolve(r: AdminReport, action: string) {
   busy.value = r.id
   try {
     await $fetch(`/api/admin/reports/${r.id}/resolve`, { method: 'POST', body: { action } })
     await refresh()
+    toast.ok(`${actionLabel[action] ?? 'Đã xử lý'} báo cáo.`)
   }
+  catch { toast.err('Xử lý thất bại. Vui lòng thử lại.') }
   finally {
     busy.value = null
   }

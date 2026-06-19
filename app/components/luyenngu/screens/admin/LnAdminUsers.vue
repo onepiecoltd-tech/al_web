@@ -52,6 +52,7 @@ function openEdit(u: AdminUser) {
 async function save() {
   error.value = ''
   saving.value = true
+  const isEdit = !!editing.value
   try {
     if (editing.value) {
       await $fetch(`/api/admin/users/${editing.value.id}`, {
@@ -67,6 +68,7 @@ async function save() {
     }
     dialogOpen.value = false
     await refresh()
+    toast.ok(isEdit ? `Đã cập nhật ${form.name}.` : `Đã tạo tài khoản ${form.name}.`)
   }
   catch (e) {
     const err = e as { data?: { statusMessage?: string }, statusMessage?: string }
@@ -77,12 +79,36 @@ async function save() {
   }
 }
 
-async function toggleBan(u: AdminUser) {
-  await $fetch(`/api/admin/users/${u.id}`, {
-    method: 'PUT',
-    body: { plan: u.plan, role: u.role, status: u.status === 'active' ? 'banned' : 'active' },
-  })
-  await refresh()
+const toast = useToast()
+
+const confirmOpen = ref(false)
+const confirmTarget = ref<AdminUser | null>(null)
+const confirmBusy = ref(false)
+
+function openConfirm(u: AdminUser) {
+  confirmTarget.value = u
+  confirmOpen.value = true
+}
+
+async function confirmToggle() {
+  const u = confirmTarget.value
+  if (!u) return
+  confirmBusy.value = true
+  try {
+    await $fetch(`/api/admin/users/${u.id}`, {
+      method: 'PUT',
+      body: { plan: u.plan, role: u.role, status: u.status === 'active' ? 'banned' : 'active' },
+    })
+    await refresh()
+    toast.ok(u.status === 'active' ? `Đã khóa tài khoản ${u.name}.` : `Đã mở khóa tài khoản ${u.name}.`)
+    confirmOpen.value = false
+  }
+  catch {
+    toast.err('Thao tác thất bại. Vui lòng thử lại.')
+  }
+  finally {
+    confirmBusy.value = false
+  }
 }
 </script>
 
@@ -136,7 +162,7 @@ async function toggleBan(u: AdminUser) {
             <td class="px-4 py-3 border-b border-line-soft align-middle">
               <div class="flex gap-1 justify-end">
                 <LnIconBtn :size="32" title="Sửa" @click="openEdit(u)"><LnIcon name="pen-line" :size="15" /></LnIconBtn>
-                <LnIconBtn :size="32" :title="u.status === 'active' ? 'Khóa' : 'Mở khóa'" @click="toggleBan(u)">
+                <LnIconBtn :size="32" :title="u.status === 'active' ? 'Khóa' : 'Mở khóa'" @click="openConfirm(u)">
                   <LnIcon :name="u.status === 'active' ? 'ban' : 'check'" :size="15" :class="u.status === 'active' ? 'text-error' : 'text-success'" />
                 </LnIconBtn>
               </div>
@@ -161,9 +187,9 @@ async function toggleBan(u: AdminUser) {
 
       <div class="flex flex-col gap-3.5">
         <template v-if="!editing">
-          <LnField v-model="form.email" label="Email" type="email" placeholder="ban@email.com" />
-          <LnField v-model="form.name" label="Tên hiển thị" placeholder="VD: Minh Anh" />
-          <LnField v-model="form.password" label="Mật khẩu" type="password" placeholder="••••••••" hint="Tối thiểu 6 ký tự." />
+          <LnField v-model="form.email" label="Email" type="email" placeholder="ban@email.com" autocomplete="off" />
+          <LnField v-model="form.name" label="Tên hiển thị" placeholder="VD: Minh Anh" autocomplete="off" />
+          <LnField v-model="form.password" label="Mật khẩu" type="password" placeholder="••••••••" hint="Tối thiểu 6 ký tự." autocomplete="new-password" />
         </template>
         <div v-else class="text-ink-3 text-sm">{{ form.name }} · {{ form.email }}</div>
 
@@ -192,6 +218,38 @@ async function toggleBan(u: AdminUser) {
             {{ saving ? 'Đang lưu…' : (editing ? 'Lưu' : 'Tạo') }}
           </LnBtn>
         </div>
+      </div>
+    </LnDialog>
+
+    <!-- confirm ban / unban -->
+    <LnDialog :open="confirmOpen" :width="400" @close="confirmOpen = false">
+      <div class="flex items-start gap-3 mb-4">
+        <div class="grid place-items-center w-10 h-10 rounded-full flex-none" :class="confirmTarget?.status === 'active' ? 'bg-error-bg' : 'bg-success-bg'">
+          <LnIcon :name="confirmTarget?.status === 'active' ? 'ban' : 'check'" :size="20" :class="confirmTarget?.status === 'active' ? 'text-error' : 'text-success'" />
+        </div>
+        <div>
+          <b class="font-display text-[1.1rem] font-bold block">
+            {{ confirmTarget?.status === 'active' ? 'Khóa tài khoản?' : 'Mở khóa tài khoản?' }}
+          </b>
+          <p class="text-ink-3 text-sm mt-1">
+            {{ confirmTarget?.status === 'active'
+              ? `Người dùng ${confirmTarget?.name} sẽ không thể đăng nhập cho đến khi được mở khóa.`
+              : `Người dùng ${confirmTarget?.name} sẽ có thể đăng nhập trở lại.`
+            }}
+          </p>
+        </div>
+      </div>
+      <div class="flex gap-2.5">
+        <LnBtn variant="ghost" class="flex-1" :disabled="confirmBusy" @click="confirmOpen = false">Hủy</LnBtn>
+        <LnBtn
+          class="flex-1"
+          :variant="confirmTarget?.status === 'active' ? 'outline' : 'primary'"
+          :class="confirmTarget?.status === 'active' ? 'border-error! text-error! hover:bg-error-bg!' : ''"
+          :disabled="confirmBusy"
+          @click="confirmToggle"
+        >
+          {{ confirmBusy ? 'Đang xử lý…' : (confirmTarget?.status === 'active' ? 'Khóa' : 'Mở khóa') }}
+        </LnBtn>
       </div>
     </LnDialog>
   </div>

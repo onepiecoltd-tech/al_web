@@ -87,9 +87,9 @@ async function submit() {
         </div> -->
 
         <div class="flex flex-col gap-3.5">
-          <LnField v-if="mode === 'register'" v-model="name" label="Tên hiển thị" placeholder="VD: Minh Anh" />
-          <LnField v-model="email" label="Email" type="email" placeholder="ban@email.com" />
-          <LnField v-model="password" label="Mật khẩu" type="password" placeholder="••••••••" :error="error || undefined" :hint="mode === 'login' ? undefined : 'Tối thiểu 6 ký tự.'" @keyup.enter="submit" />
+          <LnField v-if="mode === 'register'" v-model="name" label="Tên hiển thị" placeholder="VD: Minh Anh" autocomplete="name" />
+          <LnField v-model="email" label="Email" type="email" placeholder="ban@email.com" autocomplete="email" />
+          <LnField v-model="password" label="Mật khẩu" type="password" placeholder="••••••••" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" :error="error || undefined" :hint="mode === 'login' ? undefined : 'Tối thiểu 6 ký tự.'" @keyup.enter="submit" />
           <LnBtn variant="primary" size="lg" class="w-full" :disabled="loading" @click="submit">
             {{ loading ? 'Đang xử lý…' : (mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản') }}
           </LnBtn>

@@ -9,6 +9,7 @@ const model = defineModel<string>()
     <input
       v-model="model"
       :placeholder="placeholder"
+      autocomplete="off"
       class="w-full border-0 bg-transparent outline-none font-body text-[0.9375rem] text-ink placeholder:text-ink-4"
     >
   </div>

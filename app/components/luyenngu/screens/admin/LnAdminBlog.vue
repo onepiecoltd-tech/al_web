@@ -20,6 +20,7 @@ const statuses: { value: BlogPost['status'], label: string }[] = [
   { value: 'published', label: 'Đã đăng' },
 ]
 
+const toast = useToast()
 const dialogOpen = ref(false)
 const editingId = ref<string | null>(null)
 const saving = ref(false)
@@ -43,6 +44,7 @@ function openEdit(p: BlogPost) {
 async function save() {
   error.value = ''
   saving.value = true
+  const isEdit = !!editingId.value
   try {
     if (editingId.value) {
       await $fetch(`/api/blog/${editingId.value}`, { method: 'PUT', body: { ...form } })
@@ -52,6 +54,7 @@ async function save() {
     }
     dialogOpen.value = false
     await refresh()
+    toast.ok(isEdit ? 'Đã cập nhật bài viết.' : 'Đã tạo bài viết mới.')
   }
   catch (e) {
     const err = e as { data?: { statusMessage?: string }, statusMessage?: string }
@@ -63,8 +66,12 @@ async function save() {
 }
 
 async function remove(id: string) {
-  await $fetch(`/api/blog/${id}`, { method: 'DELETE' })
-  await refresh()
+  try {
+    await $fetch(`/api/blog/${id}`, { method: 'DELETE' })
+    await refresh()
+    toast.ok('Đã xóa bài viết.')
+  }
+  catch { toast.err('Xóa thất bại.') }
 }
 </script>
 

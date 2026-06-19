@@ -1,8 +1,19 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
-import { A_REPORTS } from '~/composables/useLnData'
 
-const NAV = [
+const { me } = useMe()
+
+const { data: pendingRes } = await useFetch<{ meta: { total: number } }>('/api/admin/reports', {
+  query: { status: 'pending', limit: 1 },
+  default: () => ({ meta: { total: 0 } }),
+})
+const pendingCount = computed(() => pendingRes.value.meta.total)
+
+type NavSection = { sec: string }
+type NavItem = { id: string; label: string; icon: string; path: string }
+type NavEntry = NavSection | NavItem
+
+const NAV: NavEntry[] = [
   { sec: 'Tổng quan' },
   { id: 'overview', label: 'Bảng điều khiển', icon: 'layout-dashboard', path: '/admin' },
   { id: 'revenue', label: 'Doanh thu', icon: 'wallet', path: '/admin/doanh-thu' },
@@ -11,9 +22,12 @@ const NAV = [
   { id: 'exams', label: 'Đề thi & ngân hàng', icon: 'file-stack', path: '/admin/de-thi' },
   { id: 'blog', label: 'Blog', icon: 'newspaper', path: '/admin/blog' },
   { sec: 'An toàn' },
-  { id: 'reports', label: 'Kiểm duyệt', icon: 'shield-alert', path: '/admin/kiem-duyet', dot: A_REPORTS.length },
+  { id: 'reports', label: 'Kiểm duyệt', icon: 'shield-alert', path: '/admin/kiem-duyet' },
   { id: 'settings', label: 'Cấu hình', icon: 'settings', path: '/admin/cau-hinh' },
-] as const
+]
+
+function isSec(n: NavEntry): n is NavSection { return 'sec' in n }
+function isItem(n: NavEntry): n is NavItem { return 'id' in n }
 
 const TITLES: Record<string, string> = {
   '/admin': 'Bảng điều khiển',
@@ -53,13 +67,13 @@ useHead({ bodyAttrs: { class: 'luyenngu font-body' } })
       <nav class="flex flex-col gap-0.5 flex-1 overflow-y-auto min-h-0">
         <template v-for="(n, i) in NAV" :key="i">
           <div
-            v-if="n.sec"
+            v-if="isSec(n)"
             class="font-body font-bold text-[0.62rem] tracking-[0.14em] uppercase text-white/40 px-[11px] pt-3.5 pb-1.5"
           >
             {{ n.sec }}
           </div>
           <NuxtLink
-            v-else
+            v-else-if="isItem(n)"
             :to="localePath(n.path)"
             :class="cn(
               'flex items-center gap-[11px] px-[11px] py-[9px] rounded-md-ln font-body text-[0.8125rem] font-semibold text-white/70! cursor-pointer transition-colors duration-150 hover:bg-white/[0.07] hover:text-white! text-left w-full',
@@ -69,21 +83,21 @@ useHead({ bodyAttrs: { class: 'luyenngu font-body' } })
             <LnIcon :name="n.icon" :size="18" class="flex-none" />
             <span class="flex-1">{{ n.label }}</span>
             <span
-              v-if="n.dot"
+              v-if="n.id === 'reports' && pendingCount > 0"
               :class="cn(
                 'min-w-[18px] h-[18px] px-[5px] rounded-full font-body font-bold text-[0.66rem] leading-[18px] text-center',
                 currentPath === n.path ? 'bg-white text-son-deep' : 'bg-son-bright text-white',
               )"
-            >{{ n.dot }}</span>
+            >{{ pendingCount }}</span>
           </NuxtLink>
         </template>
       </nav>
 
       <div class="border-t border-white/[0.12] pt-3 mt-3 flex items-center gap-2.5">
-        <LnAvatar name="Admin" color="son" :size="34" />
+        <LnAvatar :name="me?.name ?? ''" color="son" :size="34" />
         <div class="flex-1 min-w-0">
-          <div class="font-body text-[0.8125rem] font-bold text-white">Quản trị viên</div>
-          <div class="text-xs text-white/50">admin@luyenngu.vn</div>
+          <div class="font-body text-[0.8125rem] font-bold text-white truncate">{{ me?.name }}</div>
+          <div class="text-xs text-white/50 truncate">{{ me?.email }}</div>
         </div>
         <NuxtLink :to="localePath('/login')" title="Đăng xuất" class="text-white/50! hover:text-white!">
           <LnIcon name="log-out" :size="16" class="cursor-pointer" />

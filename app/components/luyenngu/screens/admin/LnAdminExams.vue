@@ -22,6 +22,7 @@ function fmtDate(iso: string) {
 // create (upload card)
 const drop = ref(false)
 const form = reactive({ name: '', type: 'IELTS', questions: 0 })
+const toast = useToast()
 const creating = ref(false)
 function onDrop(e: DragEvent) {
   e.preventDefault()
@@ -33,25 +34,34 @@ async function create() {
   creating.value = true
   try {
     await $fetch('/api/admin/exams', { method: 'POST', body: { ...form } })
+    toast.ok(`Đã tạo đề "${form.name}".`)
     Object.assign(form, { name: '', type: 'IELTS', questions: 0 })
     await refresh()
   }
+  catch { toast.err('Tạo đề thất bại.') }
   finally {
     creating.value = false
   }
 }
 
 async function update(e: AdminExam, patch: Partial<AdminExam>) {
-  await $fetch(`/api/admin/exams/${e.id}`, {
-    method: 'PUT',
-    body: { name: e.name, type: e.type, questions: e.questions, state: e.state, ...patch },
-  })
-  await refresh()
+  try {
+    await $fetch(`/api/admin/exams/${e.id}`, {
+      method: 'PUT',
+      body: { name: e.name, type: e.type, questions: e.questions, state: e.state, ...patch },
+    })
+    await refresh()
+  }
+  catch { toast.err('Cập nhật thất bại.') }
 }
 
 async function remove(e: AdminExam) {
-  await $fetch(`/api/admin/exams/${e.id}`, { method: 'DELETE' })
-  await refresh()
+  try {
+    await $fetch(`/api/admin/exams/${e.id}`, { method: 'DELETE' })
+    await refresh()
+    toast.ok(`Đã xóa đề "${e.name}".`)
+  }
+  catch { toast.err('Xóa thất bại.') }
 }
 
 // edit dialog
@@ -67,7 +77,10 @@ async function saveEdit() {
   if (!editing.value)
     return
   await update(editing.value, { ...editForm })
-  editOpen.value = false
+  if (editOpen.value) {
+    toast.ok(`Đã cập nhật đề "${editForm.name}".`)
+    editOpen.value = false
+  }
 }
 </script>
 

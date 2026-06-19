@@ -7,6 +7,7 @@ defineProps<{
   error?: string
   type?: string
   placeholder?: string
+  autocomplete?: string
 }>()
 const model = defineModel<string>()
 </script>
@@ -18,6 +19,7 @@ const model = defineModel<string>()
       v-model="model"
       :type="type || 'text'"
       :placeholder="placeholder"
+      :autocomplete="autocomplete"
       :class="cn(
         'w-full px-[13px] py-[11px] rounded-md-ln border bg-paper-0 font-body text-[0.9375rem] text-ink',
         'placeholder:text-ink-4 transition-[border-color,box-shadow] duration-150',
