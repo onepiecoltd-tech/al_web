@@ -8,7 +8,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     // Server-only (BFF): the browser never calls the Go API directly; Nitro
-    // server routes proxy to it. Override at runtime with NUXT_API_BASE.
+    // server routes proxy to it. Set via NUXT_API_BASE in .env.
     apiBase: 'http://localhost:8080',
   },
 

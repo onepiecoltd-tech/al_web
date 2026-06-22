@@ -125,5 +125,6 @@ useHead({ bodyAttrs: { class: 'luyenngu font-body' } })
         <slot />
       </main>
     </div>
+    <LnToastStack />
   </div>
 </template>

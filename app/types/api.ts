@@ -65,6 +65,15 @@ export interface AdminExam {
   created_at: string
 }
 
+export interface Question {
+  id: string
+  exam_id: string
+  position: number
+  prompt: string
+  sample_answer: string
+  created_at: string
+}
+
 export interface AdminReport {
   id: string
   content: string

@@ -11,5 +11,6 @@ useHead({
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
+    <LnConfirmDialog />
   </div>
 </template>

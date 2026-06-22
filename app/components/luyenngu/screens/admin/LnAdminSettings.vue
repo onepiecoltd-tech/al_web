@@ -3,6 +3,7 @@ import type { AdminSetting, CoinPack } from '~/types/api'
 
 const { data: gifts } = await useGifts()
 const toast = useToast()
+const confirm = useConfirm()
 
 const { data: coinPacks, refresh: refreshPacks } = await useFetch<CoinPack[]>('/api/coin-packs', { default: () => [] })
 
@@ -42,6 +43,8 @@ async function savePack() {
   }
 }
 async function deletePack(p: CoinPack) {
+  if (!await confirm.ask({ title: 'Xóa gói nạp?', message: `Gói ${p.coins.toLocaleString('vi')} xu (₫${p.vnd.toLocaleString('vi')}) sẽ bị xóa vĩnh viễn.`, confirmLabel: 'Xóa', danger: true }))
+    return
   try {
     await $fetch(`/api/admin/coin-packs/${p.id}`, { method: 'DELETE' })
     await refreshPacks()
@@ -60,7 +63,9 @@ async function toggle(s: AdminSetting, value: boolean) {
   try {
     await $fetch(`/api/admin/settings/${s.key}`, { method: 'PUT', body: { value } })
     await refresh()
+    toast.ok(`Đã ${value ? 'bật' : 'tắt'} "${s.label}".`)
   }
+  catch { toast.err('Cập nhật cờ tính năng thất bại.') }
   finally {
     saving.value = null
   }

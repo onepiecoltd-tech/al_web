@@ -36,7 +36,11 @@ const { data: prefs } = await useFetch<Record<string, boolean>>('/api/me/prefs',
 Object.assign(settings, prefs.value)
 async function setPref(key: string, value: boolean) {
   settings[key] = value
-  await $fetch('/api/me/prefs', { method: 'PUT', body: { ...settings } })
+  try {
+    await $fetch('/api/me/prefs', { method: 'PUT', body: { ...settings } })
+    toast.ok('Đã lưu cài đặt.')
+  }
+  catch { toast.err('Lưu cài đặt thất bại.') }
 }
 
 const settingsRows: [keyof typeof settings, string, string][] = [

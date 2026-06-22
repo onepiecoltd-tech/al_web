@@ -14,6 +14,7 @@ const { data: friends, refresh: refreshFriends } = await useFetch<Friend[]>('/ap
 const { data: gifts } = await useGifts()
 const { coins, gift: spendGift } = useWallet()
 const toast = useToast()
+const confirm = useConfirm()
 
 // friend management dialog
 const friendDlg = ref(false)
@@ -46,13 +47,15 @@ async function addFriend(u: UserMini) {
   }
 }
 async function removeFriend(f: Friend) {
+  if (!await confirm.ask({ title: 'Xóa bạn bè?', message: `${f.name} sẽ bị xóa khỏi danh sách bạn bè của bạn.`, confirmLabel: 'Xóa', danger: true }))
+    return
   friendBusy.value = true
   try {
     await $fetch(`/api/friends/${f.id}`, { method: 'DELETE' })
     if (active.value >= friends.value.length - 1)
       active.value = 0
     await Promise.all([refreshFriends(), doSearch()])
-    toast.info(`Đã xóa ${f.name} khỏi danh sách bạn bè.`)
+    toast.ok(`Đã xóa ${f.name} khỏi danh sách bạn bè.`)
   }
   catch {
     toast.err('Không thể xóa bạn. Vui lòng thử lại.')

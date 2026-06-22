@@ -21,6 +21,7 @@ const statuses: { value: BlogPost['status'], label: string }[] = [
 ]
 
 const toast = useToast()
+const confirm = useConfirm()
 const dialogOpen = ref(false)
 const editingId = ref<string | null>(null)
 const saving = ref(false)
@@ -66,6 +67,8 @@ async function save() {
 }
 
 async function remove(id: string) {
+  if (!await confirm.ask({ title: 'Xóa bài viết?', message: 'Bài viết sẽ bị xóa vĩnh viễn và không thể khôi phục.', confirmLabel: 'Xóa', danger: true }))
+    return
   try {
     await $fetch(`/api/blog/${id}`, { method: 'DELETE' })
     await refresh()

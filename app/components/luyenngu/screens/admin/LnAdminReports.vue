@@ -24,8 +24,11 @@ function fmtAgo(iso: string) {
 }
 
 const toast = useToast()
+const confirm = useConfirm()
 const busy = ref<string | null>(null)
 async function resolve(r: AdminReport, action: string) {
+  if (action === 'removed' && !await confirm.ask({ title: 'Gỡ nội dung?', message: 'Nội dung bị báo cáo sẽ bị gỡ khỏi hệ thống.', confirmLabel: 'Gỡ', danger: true }))
+    return
   busy.value = r.id
   try {
     await $fetch(`/api/admin/reports/${r.id}/resolve`, { method: 'POST', body: { action } })
