@@ -42,7 +42,7 @@ const activity = [
     <!-- greeting -->
     <div class="flex items-center justify-between gap-3">
       <div>
-        <div class="text-xs font-extrabold uppercase tracking-[0.12em] text-son">{{ today }}</div>
+        <div class="text-xs font-extrabold capitalize tracking-[0.12em] text-son">{{ today }}</div>
         <h2 class="font-display font-extrabold text-[2rem] mt-1">Chào {{ firstName }} 👋</h2>
       </div>
       <LnBadge tone="gold" status class="text-[0.8rem] px-3 py-1.5">🔥 {{ me?.streak ?? 0 }} ngày streak</LnBadge>

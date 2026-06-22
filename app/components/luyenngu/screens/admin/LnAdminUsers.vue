@@ -129,7 +129,7 @@ async function confirmToggle() {
       <table class="w-full border-collapse">
         <thead>
           <tr>
-            <th v-for="h in ['Người dùng', 'Gói', 'ELO', 'Vai trò', 'Trạng thái', 'Tham gia', '']" :key="h" class="text-left font-body font-bold text-[0.72rem] tracking-[0.04em] uppercase text-ink-3 px-4 py-3 bg-paper-2 border-b border-line whitespace-nowrap">
+            <th v-for="h in ['Người dùng', 'Gói', 'ELO', 'Vai trò', 'Trạng thái', 'Tham gia', '']" :key="h" class="text-left font-body font-bold text-[0.72rem] tracking-[0.04em] capitalize text-ink-3 px-4 py-3 bg-paper-2 border-b border-line whitespace-nowrap">
               {{ h }}
             </th>
           </tr>
@@ -163,7 +163,7 @@ async function confirmToggle() {
               <div class="flex gap-1 justify-end">
                 <LnIconBtn :size="32" title="Sửa" @click="openEdit(u)"><LnIcon name="pen-line" :size="15" /></LnIconBtn>
                 <LnIconBtn :size="32" :title="u.status === 'active' ? 'Khóa' : 'Mở khóa'" @click="openConfirm(u)">
-                  <LnIcon :name="u.status === 'active' ? 'ban' : 'check'" :size="15" :class="u.status === 'active' ? 'text-error' : 'text-success'" />
+                  <LnIcon :name="u.status === 'active' ? 'ban' : 'check'" :size="15" :class="u.status === 'active' ? 'text-error capitalize' : 'text-success'" />
                 </LnIconBtn>
               </div>
             </td>
@@ -210,7 +210,7 @@ async function confirmToggle() {
           </select>
         </div>
 
-        <p v-if="error" class="text-error text-xs">{{ error }}</p>
+        <p v-if="error" class="text-error capitalize text-xs">{{ error }}</p>
 
         <div class="flex gap-2.5 mt-1">
           <LnBtn variant="ghost" class="flex-1" :disabled="saving" @click="dialogOpen = false">Hủy</LnBtn>
@@ -225,7 +225,7 @@ async function confirmToggle() {
     <LnDialog :open="confirmOpen" :width="400" @close="confirmOpen = false">
       <div class="flex items-start gap-3 mb-4">
         <div class="grid place-items-center w-10 h-10 rounded-full flex-none" :class="confirmTarget?.status === 'active' ? 'bg-error-bg' : 'bg-success-bg'">
-          <LnIcon :name="confirmTarget?.status === 'active' ? 'ban' : 'check'" :size="20" :class="confirmTarget?.status === 'active' ? 'text-error' : 'text-success'" />
+          <LnIcon :name="confirmTarget?.status === 'active' ? 'ban' : 'check'" :size="20" :class="confirmTarget?.status === 'active' ? 'text-error capitalize' : 'text-success'" />
         </div>
         <div>
           <b class="font-display text-[1.1rem] font-bold block">
@@ -244,7 +244,7 @@ async function confirmToggle() {
         <LnBtn
           class="flex-1"
           :variant="confirmTarget?.status === 'active' ? 'outline' : 'primary'"
-          :class="confirmTarget?.status === 'active' ? 'border-error! text-error! hover:bg-error-bg!' : ''"
+          :class="confirmTarget?.status === 'active' ? 'border-error! text-error capitalize! hover:bg-error-bg!' : ''"
           :disabled="confirmBusy"
           @click="confirmToggle"
         >

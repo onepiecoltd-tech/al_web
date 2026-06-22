@@ -126,8 +126,8 @@ const scopeLabel: Record<string, string> = { city: 'cùng tỉnh/thành', nearby
           </div>
         </div>
         <div class="flex gap-0.5">
-          <LnIconBtn title="Báo cáo"><LnIcon name="flag" :size="18" class="text-error" /></LnIconBtn>
-          <LnIconBtn title="Chặn"><LnIcon name="ban" :size="18" class="text-error" /></LnIconBtn>
+          <LnIconBtn title="Báo cáo"><LnIcon name="flag" :size="18" class="text-error capitalize" /></LnIconBtn>
+          <LnIconBtn title="Chặn"><LnIcon name="ban" :size="18" class="text-error capitalize" /></LnIconBtn>
         </div>
       </div>
       <div v-if="kind === 'voice'" class="flex justify-center gap-[30px] py-4 bg-paper-1 border-b border-line-soft">

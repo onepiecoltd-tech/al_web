@@ -61,7 +61,7 @@ async function sendComment() {
   <!-- POST VIEW -->
   <div v-if="post" class="max-w-[720px] mx-auto">
     <LnBtn variant="ghost" size="sm" icon="chevron-left" @click="open = null">Quay lại Blog</LnBtn>
-    <span class="block mt-4 text-xs font-extrabold uppercase tracking-[0.12em] text-son">{{ post.category }}</span>
+    <span class="block mt-4 text-xs font-extrabold capitalize tracking-[0.12em] text-son">{{ post.category }}</span>
     <h1 class="font-display font-extrabold text-[2.5rem] my-2 mb-3.5 tracking-[-0.015em]">{{ post.title }}</h1>
     <div class="flex items-center gap-3 py-[11px]">
       <LnAvatar :name="post.author" color="son" :size="40" />
@@ -139,7 +139,7 @@ async function sendComment() {
         <div class="h-[120px] rounded-md-ln grid place-items-center" :class="i % 2 ? 'bg-reu-soft' : 'bg-son-soft'">
           <LnIcon :name="i % 2 ? 'book-open' : 'lightbulb'" :size="30" :class="i % 2 ? 'text-reu' : 'text-son'" />
         </div>
-        <span class="text-xs font-extrabold uppercase tracking-[0.12em] text-son">{{ p.category }}</span>
+        <span class="text-xs font-extrabold capitalize tracking-[0.12em] text-son">{{ p.category }}</span>
         <div class="font-body text-base font-bold leading-snug">{{ p.title }}</div>
         <div class="text-xs text-ink-3 line-clamp-2">{{ p.excerpt }}</div>
         <div class="flex items-center justify-between mt-auto pt-2">

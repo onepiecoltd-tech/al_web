@@ -40,8 +40,11 @@ const title = computed(() => TITLES[currentPath.value] || 'LuyệnNgữ')
 
 useHead({ bodyAttrs: { class: 'luyenngu font-body' } })
 
-function logout() {
-  auth.logout()
+const confirm = useConfirm()
+async function logout() {
+  if (!await confirm.ask({ title: 'Đăng xuất?', message: 'Bạn sẽ cần đăng nhập lại để tiếp tục.', confirmLabel: 'Đăng xuất', danger: true }))
+    return
+  await auth.logout()
   navigateTo(localePath('/login'))
 }
 
@@ -106,7 +109,7 @@ provide(LN_CTX, ctx)
           <LnBtn variant="outline" size="sm" icon="shield-alert">Trang quản trị</LnBtn>
         </NuxtLink>
         <LnIconBtn :title="offline ? 'Đang ngoại tuyến — bấm để online' : 'Mô phỏng ngoại tuyến'" @click="offline = !offline">
-          <LnIcon :name="offline ? 'wifi-off' : 'wifi'" :size="20" :class="offline && 'text-error'" />
+          <LnIcon :name="offline ? 'wifi-off' : 'wifi'" :size="20" :class="offline && 'text-error capitalize'" />
         </LnIconBtn>
         <div class="relative">
           <LnIconBtn @click="notifOpen = !notifOpen">
@@ -130,5 +133,6 @@ provide(LN_CTX, ctx)
 
     <LnMessengerOverlay v-if="messengerOpen" @exit="messengerOpen = false" />
     <LnToastStack />
+    <LnConfirmDialog />
   </div>
 </template>

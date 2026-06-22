@@ -1,4 +1,17 @@
 <script setup lang="ts">
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: { client_id: string, callback: (res: { credential: string }) => void }) => void
+          renderButton: (el: HTMLElement, opts: Record<string, unknown>) => void
+        }
+      }
+    }
+  }
+}
+
 const emit = defineEmits<{ login: [] }>()
 const mode = ref<'login' | 'register'>('login')
 const stats: [string, string][] = [['12.4k', 'người học'], ['380k', 'trận đấu'], ['4.8★', 'đánh giá']]
@@ -10,6 +23,36 @@ const canSignup = computed(() => status.value.allow_signup)
 const name = ref('')
 const email = ref('')
 const password = ref('')
+
+// Google Identity Services renders its own button into this container — its
+// JS SDK requires a real <button> it owns, can't be triggered from ours.
+const googleBtn = ref<HTMLElement>()
+async function onGoogleCredential(res: { credential: string }) {
+  try {
+    await auth.loginWithGoogle(res.credential)
+    toast.ok('Đăng nhập thành công!')
+    emit('login')
+  }
+  catch (e) {
+    const err = e as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.err(err.data?.statusMessage ?? err.statusMessage ?? 'Đăng nhập Google thất bại.')
+  }
+}
+onMounted(() => {
+  const { public: { googleClientId } } = useRuntimeConfig()
+  if (!googleClientId || !googleBtn.value)
+    return
+  const script = document.createElement('script')
+  script.src = 'https://accounts.google.com/gsi/client'
+  script.async = true
+  script.onload = () => {
+    if (!window.google || !googleBtn.value)
+      return
+    window.google.accounts.id.initialize({ client_id: googleClientId, callback: onGoogleCredential })
+    window.google.accounts.id.renderButton(googleBtn.value, { type: 'standard', shape: 'pill', width: 380, text: 'continue_with', locale: 'vi' })
+  }
+  document.head.appendChild(script)
+})
 
 function switchMode(m: 'login' | 'register') {
   mode.value = m
@@ -78,13 +121,13 @@ async function submit() {
         <h2 class="font-display font-bold text-[1.75rem] mb-1">{{ mode === 'login' ? 'Chào mừng trở lại' : 'Tạo tài khoản' }}</h2>
         <p class="text-ink-3 font-body text-[0.9375rem] mb-[22px]">{{ mode === 'login' ? 'Đăng nhập để tiếp tục luyện ngữ.' : 'Miễn phí — nâng cấp Pro bất cứ lúc nào.' }}</p>
 
-        <!-- <button type="button" class="w-full justify-center mb-3.5 inline-flex items-center gap-2 rounded-full border border-line-strong bg-paper-0 text-ink font-body font-bold px-[26px] py-3.5 text-[0.9rem] cursor-pointer transition-colors hover:bg-paper-2">
-          <span class="grid place-items-center w-[18px] h-[18px] rounded-full bg-white border border-line font-extrabold text-xs text-son">G</span>
-          Tiếp tục với Google
-        </button>
+        <div ref="googleBtn" class="w-full mb-3.5 flex justify-center" />
+        <div v-if="!useRuntimeConfig().public.googleClientId" class="text-ink-3 text-xs text-center mb-3.5">
+          (Đăng nhập Google chưa được cấu hình)
+        </div>
         <div class="flex items-center gap-3 my-3.5">
           <div class="flex-1 h-px bg-line" /><span class="text-ink-3 text-xs">hoặc</span><div class="flex-1 h-px bg-line" />
-        </div> -->
+        </div>
 
         <div class="flex flex-col gap-3.5">
           <LnField v-if="mode === 'register'" v-model="name" label="Tên hiển thị" placeholder="VD: Minh Anh" autocomplete="name" />

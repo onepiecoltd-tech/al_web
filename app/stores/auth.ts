@@ -34,11 +34,20 @@ export const useAuthStore = defineStore('auth', () => {
     flag.value = '1'
   }
 
+  async function loginWithGoogle(idToken: string) {
+    const res = await $fetch<{ user: AuthUser }>('/api/auth/google', {
+      method: 'POST',
+      body: { id_token: idToken },
+    })
+    user.value = res.user
+    flag.value = '1'
+  }
+
   async function logout() {
     await $fetch('/api/auth/logout', { method: 'POST' })
     user.value = null
     flag.value = null
   }
 
-  return { user, authed, login, register, logout }
+  return { user, authed, login, register, loginWithGoogle, logout }
 })

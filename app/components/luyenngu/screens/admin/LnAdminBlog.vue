@@ -88,7 +88,7 @@ async function remove(id: string) {
       <table class="w-full border-collapse">
         <thead>
           <tr>
-            <th v-for="h in ['Bài viết', 'Tác giả', 'Lượt đọc', 'Bình luận', 'Trạng thái', '']" :key="h" class="text-left font-body font-bold text-[0.72rem] tracking-[0.04em] uppercase text-ink-3 px-4 py-3 bg-paper-2 border-b border-line whitespace-nowrap">
+            <th v-for="h in ['Bài viết', 'Tác giả', 'Lượt đọc', 'Bình luận', 'Trạng thái', '']" :key="h" class="text-left font-body font-bold text-[0.72rem] tracking-[0.04em] capitalize text-ink-3 px-4 py-3 bg-paper-2 border-b border-line whitespace-nowrap">
               {{ h }}
             </th>
           </tr>
@@ -108,7 +108,7 @@ async function remove(id: string) {
             <td class="px-4 py-3 border-b border-line-soft align-middle">
               <div class="flex gap-1 justify-end items-center">
                 <LnIconBtn :size="32" title="Sửa" @click="openEdit(b)"><LnIcon name="pen-line" :size="15" class="text-ink-2" /></LnIconBtn>
-                <LnIconBtn :size="32" title="Xóa" @click="remove(b.id)"><LnIcon name="trash-2" :size="15" class="text-error" /></LnIconBtn>
+                <LnIconBtn :size="32" title="Xóa" @click="remove(b.id)"><LnIcon name="trash-2" :size="15" class="text-error capitalize" /></LnIconBtn>
               </div>
             </td>
           </tr>
@@ -147,7 +147,7 @@ async function remove(id: string) {
           </select>
         </div>
 
-        <p v-if="error" class="text-error text-xs">{{ error }}</p>
+        <p v-if="error" class="text-error capitalize text-xs">{{ error }}</p>
 
         <div class="flex gap-2.5 mt-1">
           <LnBtn variant="ghost" class="flex-1" :disabled="saving" @click="dialogOpen = false">Hủy</LnBtn>

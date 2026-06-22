@@ -10,7 +10,7 @@ withDefaults(defineProps<{
 const dtones: Record<string, string> = {
   '': 'text-ink-3',
   up: 'text-success',
-  down: 'text-error',
+  down: 'text-error capitalize',
 }
 </script>
 

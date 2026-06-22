@@ -50,7 +50,7 @@ function fmtTime(iso: string) {
         <table class="w-full border-collapse">
           <thead>
             <tr>
-              <th v-for="h in ['Người dùng', 'Loại', 'Xu', 'Số tiền', 'Cổng', 'Trạng thái', 'Thời gian']" :key="h" class="text-left font-body font-bold text-[0.72rem] tracking-[0.04em] uppercase text-ink-3 px-4 py-3 bg-paper-2 border-b border-line whitespace-nowrap">
+              <th v-for="h in ['Người dùng', 'Loại', 'Xu', 'Số tiền', 'Cổng', 'Trạng thái', 'Thời gian']" :key="h" class="text-left font-body font-bold text-[0.72rem] tracking-[0.04em] capitalize text-ink-3 px-4 py-3 bg-paper-2 border-b border-line whitespace-nowrap">
                 {{ h }}
               </th>
             </tr>
@@ -66,7 +66,7 @@ function fmtTime(iso: string) {
               <td class="px-4 py-3 border-b border-line-soft align-middle">
                 <LnBadge :tone="t.kind === 'topup' ? 'reu' : 'gold'">{{ t.kind === 'topup' ? 'Nạp xu' : 'Tặng quà' }}</LnBadge>
               </td>
-              <td class="px-4 py-3 border-b border-line-soft align-middle tabular-nums font-semibold font-body text-[0.9375rem]" :class="t.coins < 0 ? 'text-error' : 'text-success'">{{ t.coins > 0 ? '+' : '' }}{{ t.coins }}</td>
+              <td class="px-4 py-3 border-b border-line-soft align-middle tabular-nums font-semibold font-body text-[0.9375rem]" :class="t.coins < 0 ? 'text-error capitalize' : 'text-success'">{{ t.coins > 0 ? '+' : '' }}{{ t.coins }}</td>
               <td class="px-4 py-3 border-b border-line-soft align-middle tabular-nums font-body text-[0.9375rem]">{{ t.vnd ? vnd(t.vnd) : '—' }}</td>
               <td class="px-4 py-3 border-b border-line-soft align-middle text-ink-3">{{ t.method }}</td>
               <td class="px-4 py-3 border-b border-line-soft align-middle">

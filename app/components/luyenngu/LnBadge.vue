@@ -14,7 +14,7 @@ const tones: Record<string, string> = {
   reu: 'bg-reu-soft text-reu-deep',
   gold: 'bg-gold-soft text-gold-deep',
   success: 'bg-success-bg text-success',
-  error: 'bg-error-bg text-error',
+  error: 'bg-error-bg text-error capitalize',
   info: 'bg-info-bg text-info',
   solid: 'bg-son text-white',
 }
@@ -26,7 +26,7 @@ const tones: Record<string, string> = {
     :class="cn(
       'inline-block rounded-[5px] px-2 py-[3px] text-xs font-bold leading-[1.4] font-body',
       tones[tone],
-      status && 'uppercase tracking-[0.04em] text-[0.68rem]',
+      status && 'capitalize tracking-[0.04em] text-[0.68rem]',
       props.class,
     )"
   >

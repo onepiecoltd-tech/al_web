@@ -4,7 +4,7 @@ const { toasts, dismiss } = useToast()
 const icons: Record<string, string> = { ok: 'check-circle', err: 'x-circle', warn: 'alert-triangle', info: 'info' }
 const colors: Record<string, string> = {
   ok: 'bg-success-bg border-success text-success',
-  err: 'bg-error-bg border-error text-error',
+  err: 'bg-error-bg border-error text-error capitalize',
   warn: 'bg-warning-bg border-warning text-warning',
   info: 'bg-paper-0 border-line text-ink',
 }

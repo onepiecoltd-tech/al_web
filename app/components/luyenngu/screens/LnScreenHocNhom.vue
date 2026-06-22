@@ -58,7 +58,7 @@ const rankColor = (i: number) => ['text-gold-deep', 'text-[#8d8d8d]', 'text-[#a9
       <LnCard>
         <b class="font-body text-base font-bold">Vào nhóm bằng mã</b>
         <div class="flex gap-2 mt-3">
-          <input v-model="joinCode" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] uppercase placeholder:text-ink-4 placeholder:normal-case focus:outline-none focus:border-son" placeholder="VD: NGU-2026">
+          <input v-model="joinCode" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] capitalize placeholder:text-ink-4 placeholder:normal-case focus:outline-none focus:border-son" placeholder="VD: NGU-2026">
           <LnBtn variant="secondary">Vào</LnBtn>
         </div>
       </LnCard>

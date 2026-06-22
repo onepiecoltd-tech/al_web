@@ -10,6 +10,11 @@ export default defineNuxtConfig({
     // Server-only (BFF): the browser never calls the Go API directly; Nitro
     // server routes proxy to it. Set via NUXT_API_BASE in .env.
     apiBase: 'http://localhost:8080',
+    public: {
+      // OAuth client IDs are not secret (they're sent to the browser by design).
+      // Set via NUXT_PUBLIC_GOOGLE_CLIENT_ID in .env.
+      googleClientId: '',
+    },
   },
 
   modules: [

@@ -27,6 +27,6 @@ const model = defineModel<string>()
         error ? 'border-error shadow-[0_0_0_3px_var(--error-bg)]' : 'border-line-strong',
       )"
     >
-    <span v-if="hint || error" class="text-xs" :class="error ? 'text-error' : 'text-ink-3'">{{ error || hint }}</span>
+    <span v-if="hint || error" class="text-xs" :class="error ? 'text-error capitalize' : 'text-ink-3'">{{ error || hint }}</span>
   </div>
 </template>

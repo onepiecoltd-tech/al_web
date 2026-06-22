@@ -47,6 +47,8 @@ function pickFile(f?: File | null) {
 
 // upload progress (0-100), undefined when not uploading
 const importProgress = ref<number>()
+// true once the upload finished and the server is busy extracting via AI (no progress signal for this part)
+const aiProcessing = ref(false)
 function importFile(examId: string, file: File) {
   return new Promise<{ imported: number }>((resolve, reject) => {
     const fd = new FormData()
@@ -57,6 +59,7 @@ function importFile(examId: string, file: File) {
       if (e.lengthComputable)
         importProgress.value = Math.round((e.loaded / e.total) * 100)
     }
+    xhr.upload.onload = () => { aiProcessing.value = true }
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300)
         resolve(JSON.parse(xhr.responseText))
@@ -91,11 +94,24 @@ async function create() {
     await refresh()
   }
   catch (e) {
+    // The import call may have errored client-side (e.g. proxy/timeout) while the
+    // AI extraction still finished on the server — re-check before reporting failure.
+    if (examFile.value) {
+      await refresh()
+      const imported = exams.value.find(x => x.name === form.name)?.questions
+      if (imported) {
+        toast.ok(`Đã tạo đề "${form.name}" và AI nhập được ${imported} câu hỏi.`)
+        Object.assign(form, { name: '', type: 'IELTS', questions: 0 })
+        examFile.value = undefined
+        return
+      }
+    }
     toast.err((e as Error).message ?? 'Tạo đề thất bại.')
   }
   finally {
     creating.value = false
     importProgress.value = undefined
+    aiProcessing.value = false
   }
 }
 
@@ -151,7 +167,7 @@ async function saveEdit() {
       <table class="w-full border-collapse">
         <thead>
           <tr>
-            <th v-for="h in ['Đề / bộ câu hỏi', 'Loại', 'Số câu', 'Người tạo', 'Trạng thái', '']" :key="h" class="text-left font-body font-bold text-[0.72rem] tracking-[0.04em] uppercase text-ink-3 px-4 py-3 bg-paper-2 border-b border-line whitespace-nowrap">
+            <th v-for="h in ['Đề / bộ câu hỏi', 'Loại', 'Số câu', 'Người tạo', 'Trạng thái', '']" :key="h" class="text-left font-body font-bold text-[0.72rem] tracking-[0.04em] capitalize text-ink-3 px-4 py-3 bg-paper-2 border-b border-line whitespace-nowrap">
               {{ h }}
             </th>
           </tr>
@@ -180,7 +196,7 @@ async function saveEdit() {
                 <LnBtn v-if="e.state === 'review'" variant="secondary" size="sm" @click="update(e, { state: 'published' })">Duyệt</LnBtn>
                 <LnIconBtn :size="32" title="Xem chi tiết" @click="navigateTo(localePath(`/admin/de-thi/${e.id}`))"><LnIcon name="eye" :size="15" /></LnIconBtn>
                 <LnIconBtn :size="32" title="Sửa" @click="openEdit(e)"><LnIcon name="pen-line" :size="15" /></LnIconBtn>
-                <LnIconBtn :size="32" title="Xóa" @click="remove(e)"><LnIcon name="trash-2" :size="15" class="text-error" /></LnIconBtn>
+                <LnIconBtn :size="32" title="Xóa" @click="remove(e)"><LnIcon name="trash-2" :size="15" class="text-error capitalize" /></LnIconBtn>
               </div>
             </td>
           </tr>
@@ -213,9 +229,14 @@ async function saveEdit() {
       </div>
       <div v-if="importProgress !== undefined" class="mt-2.5">
         <div class="h-1.5 rounded-full bg-paper-2 overflow-hidden">
-          <div class="h-full bg-son transition-[width]" :style="{ width: `${importProgress}%` }" />
+          <div
+            :class="cn('h-full bg-son transition-[width]', aiProcessing && 'animate-pulse')"
+            :style="{ width: `${aiProcessing ? 100 : importProgress}%` }"
+          />
         </div>
-        <div class="text-xs text-ink-3 mt-1">Đang nhập câu hỏi… {{ importProgress }}%</div>
+        <div class="text-xs text-ink-3 mt-1">
+          {{ aiProcessing ? 'Đang xử lý bằng AI… có thể mất 1-2 phút, vui lòng đợi' : `Đang tải lên… ${importProgress}%` }}
+        </div>
       </div>
 
       <div class="flex flex-col gap-3 mt-4">

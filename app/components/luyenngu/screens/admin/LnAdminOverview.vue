@@ -78,7 +78,7 @@ function fmtDate(iso: string) {
           @click="go(r.path)"
         >
           <div class="grid place-items-center w-[34px] h-[34px] rounded-md-ln" :class="r.sev === 'err' ? 'bg-error-bg' : 'bg-warning-bg'">
-            <LnIcon :name="r.ic" :size="16" :class="r.sev === 'err' ? 'text-error' : 'text-warning'" />
+            <LnIcon :name="r.ic" :size="16" :class="r.sev === 'err' ? 'text-error capitalize' : 'text-warning'" />
           </div>
           <div class="flex-1 font-body text-[0.9375rem]">{{ r.t }}</div>
           <LnIcon name="chevron-right" :size="16" class="text-ink-3" />

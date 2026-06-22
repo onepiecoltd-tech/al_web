@@ -56,7 +56,7 @@ async function resolve(r: AdminReport, action: string) {
 
     <LnCard v-for="r in reports" :key="r.id" class="flex gap-3.5 items-center">
       <div class="grid place-items-center w-[42px] h-[42px] rounded-md-ln flex-none" :class="r.severity === 'err' ? 'bg-error-bg' : 'bg-warning-bg'">
-        <LnIcon name="flag" :size="19" :class="r.severity === 'err' ? 'text-error' : 'text-warning'" />
+        <LnIcon name="flag" :size="19" :class="r.severity === 'err' ? 'text-error capitalize' : 'text-warning'" />
       </div>
       <div class="flex-1 min-w-0">
         <div class="font-body text-base font-semibold">{{ r.content }}</div>

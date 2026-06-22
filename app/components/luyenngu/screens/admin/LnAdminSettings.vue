@@ -97,7 +97,7 @@ async function toggle(s: AdminSetting, value: boolean) {
             <LnBadge v-if="p.popular" tone="gold" status>Phổ biến</LnBadge>
             <span class="text-ink-3">{{ p.coins.toLocaleString('vi') }} xu</span>
             <LnIconBtn :size="30" title="Sửa" @click="openPackEdit(p)"><LnIcon name="pen-line" :size="14" /></LnIconBtn>
-            <LnIconBtn :size="30" title="Xóa" @click="deletePack(p)"><LnIcon name="trash-2" :size="14" class="text-error" /></LnIconBtn>
+            <LnIconBtn :size="30" title="Xóa" @click="deletePack(p)"><LnIcon name="trash-2" :size="14" class="text-error capitalize" /></LnIconBtn>
           </div>
         </div>
         <LnBtn variant="outline" size="sm" icon="plus" class="mt-3" @click="openPackCreate">Thêm gói</LnBtn>

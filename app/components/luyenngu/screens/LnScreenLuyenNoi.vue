@@ -20,7 +20,7 @@ const nextWords = ['comfortable', 'vegetable', 'February', 'schedule', 'colleagu
     <!-- forecast -->
     <div v-if="mode === 'speak'" class="grid grid-cols-[1.6fr_1fr] gap-4 items-start max-[1040px]:grid-cols-1">
       <div class="ln-cue relative bg-paper-0 border border-line rounded-xl-ln p-6 shadow-card">
-        <div class="text-xs font-extrabold uppercase tracking-[0.12em] text-son">IELTS Speaking · Part 2 · Forecast Quý 2</div>
+        <div class="text-xs font-extrabold capitalize tracking-[0.12em] text-son">IELTS Speaking · Part 2 · Forecast Quý 2</div>
         <div class="font-display text-[1.3125rem] font-bold my-2 mb-3">Describe a skill you want to learn.</div>
         <ul class="m-0 pl-[18px] text-ink-2 font-body text-[0.9375rem] flex flex-col gap-[5px] list-disc">
           <li v-for="c in cues" :key="c">{{ c }}</li>
@@ -57,7 +57,7 @@ const nextWords = ['comfortable', 'vegetable', 'February', 'schedule', 'colleagu
     <!-- drill -->
     <div v-else class="grid grid-cols-[1.6fr_1fr] gap-4 items-start max-[1040px]:grid-cols-1">
       <LnCard pop class="text-center !p-10">
-        <span class="text-xs font-extrabold uppercase tracking-[0.12em] text-son">Drill phát âm · miễn phí</span>
+        <span class="text-xs font-extrabold capitalize tracking-[0.12em] text-son">Drill phát âm · miễn phí</span>
         <p class="font-display font-extrabold text-[2.1rem] mt-3.5 mb-1.5">entrepreneur</p>
         <p class="text-ink-3 font-body text-[0.9375rem]">/ˌɒn.trə.prəˈnɜːr/</p>
         <div class="flex gap-3 justify-center mt-6">
@@ -72,7 +72,7 @@ const nextWords = ['comfortable', 'vegetable', 'February', 'schedule', 'colleagu
         <LnCard>
           <div class="flex items-center justify-between"><b class="font-body text-base font-bold">Độ khớp lần đọc</b><span class="font-display font-extrabold text-[1.4rem] text-success">82%</span></div>
           <div class="flex flex-wrap gap-1 mt-3.5 font-body text-[1.0625rem]">
-            <span v-for="([s, ok], i) in syllables" :key="i" class="px-2 py-[3px] rounded-md font-semibold" :class="ok ? 'bg-success-bg text-success' : 'bg-error-bg text-error'">{{ s }}</span>
+            <span v-for="([s, ok], i) in syllables" :key="i" class="px-2 py-[3px] rounded-md font-semibold" :class="ok ? 'bg-success-bg text-success' : 'bg-error-bg text-error capitalize'">{{ s }}</span>
           </div>
           <p class="font-body text-[0.9375rem] text-ink-2 mt-3.5">Âm <b>/prə/</b> chưa rõ — bật mạnh hơi hơn ở "pre". Các âm còn lại tốt.</p>
         </LnCard>

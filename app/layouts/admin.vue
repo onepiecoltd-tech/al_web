@@ -41,6 +41,15 @@ const TITLES: Record<string, string> = {
 
 const localePath = useLocalePath()
 const route = useRoute()
+const auth = useAuthStore()
+const confirm = useConfirm()
+
+async function logout() {
+  if (!await confirm.ask({ title: 'Đăng xuất?', message: 'Bạn sẽ cần đăng nhập lại để vào trang quản trị.', confirmLabel: 'Đăng xuất', danger: true }))
+    return
+  await auth.logout()
+  navigateTo(localePath('/login'))
+}
 
 // active nav by route path (strip locale prefix so /vi/admin/… still matches)
 const currentPath = computed(() => {
@@ -60,7 +69,7 @@ useHead({ bodyAttrs: { class: 'luyenngu font-body' } })
         <LnSeal :size="36" light />
         <div>
           <div class="font-display font-extrabold text-[1.15rem] leading-none text-white">LuyệnNgữ</div>
-          <div class="font-body font-bold text-[0.58rem] tracking-[0.14em] uppercase text-son-bright mt-[3px]">Admin</div>
+          <div class="font-body font-bold text-[0.58rem] tracking-[0.14em] capitalize text-son-bright mt-[3px]">Admin</div>
         </div>
       </div>
 
@@ -68,7 +77,7 @@ useHead({ bodyAttrs: { class: 'luyenngu font-body' } })
         <template v-for="(n, i) in NAV" :key="i">
           <div
             v-if="isSec(n)"
-            class="font-body font-bold text-[0.62rem] tracking-[0.14em] uppercase text-white/40 px-[11px] pt-3.5 pb-1.5"
+            class="font-body font-bold text-[0.62rem] tracking-[0.14em] capitalize text-white/40 px-[11px] pt-3.5 pb-1.5"
           >
             {{ n.sec }}
           </div>
@@ -99,9 +108,9 @@ useHead({ bodyAttrs: { class: 'luyenngu font-body' } })
           <div class="font-body text-[0.8125rem] font-bold text-white truncate">{{ me?.name }}</div>
           <div class="text-xs text-white/50 truncate">{{ me?.email }}</div>
         </div>
-        <NuxtLink :to="localePath('/login')" title="Đăng xuất" class="text-white/50! hover:text-white!">
+        <button type="button" title="Đăng xuất" class="text-white/50! hover:text-white!" @click="logout">
           <LnIcon name="log-out" :size="16" class="cursor-pointer" />
-        </NuxtLink>
+        </button>
       </div>
     </aside>
 
@@ -126,5 +135,6 @@ useHead({ bodyAttrs: { class: 'luyenngu font-body' } })
       </main>
     </div>
     <LnToastStack />
+    <LnConfirmDialog />
   </div>
 </template>

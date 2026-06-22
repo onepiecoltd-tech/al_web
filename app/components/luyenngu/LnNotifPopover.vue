@@ -5,7 +5,7 @@ const emit = defineEmits<{ close: [] }>()
 const { notifs, markAllRead } = useNotifications()
 
 const iconColor: Record<string, string> = {
-  error: 'text-error', gold: 'text-gold-deep', son: 'text-son', reu: 'text-reu-deep',
+  error: 'text-error capitalize', gold: 'text-gold-deep', son: 'text-son', reu: 'text-reu-deep',
 }
 const bg: Record<string, string> = {
   error: 'bg-error-bg', gold: 'bg-gold-soft', son: 'bg-son-soft', reu: 'bg-reu-soft',

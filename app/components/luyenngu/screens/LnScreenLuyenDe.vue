@@ -110,7 +110,7 @@ const opts: [string, string][] = [['A', 'has been delayed'], ['B', 'was delaying
         </div>
         <LnProgress :value="(7 / count) * 100" class="mb-6" />
         <LnCard pop class="!p-8">
-          <span class="text-xs font-extrabold uppercase tracking-[0.12em] text-son">TOEIC · Part 5</span>
+          <span class="text-xs font-extrabold capitalize tracking-[0.12em] text-son">TOEIC · Part 5</span>
           <p class="font-display text-[1.3125rem] font-semibold my-[22px] mt-3">The shipment ______ due to a customs inspection at the port.</p>
           <div class="flex flex-col gap-2.5">
             <button

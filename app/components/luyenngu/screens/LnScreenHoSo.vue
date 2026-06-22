@@ -98,7 +98,7 @@ const badgeBg: Record<string, string> = { son: 'bg-son-soft', gold: 'bg-gold-sof
       <div class="flex flex-col gap-4">
         <div class="relative overflow-hidden rounded-xl-ln p-6 text-white after:content-[''] after:absolute after:-right-[30px] after:-top-[30px] after:w-[140px] after:h-[140px] after:rounded-full after:bg-[radial-gradient(circle,rgba(181,136,46,.5),transparent_70%)]" style="background: linear-gradient(135deg, #2A2520, #3a322a)">
           <div class="relative">
-            <div class="text-xs text-white/65 uppercase tracking-[0.1em]">Ví xu</div>
+            <div class="text-xs text-white/65 capitalize tracking-[0.1em]">Ví xu</div>
             <div class="flex items-center gap-2.5 font-body font-extrabold text-[2.4rem] leading-none tabular-nums my-2 mb-1"><LnCoin :size="30" />{{ coins.toLocaleString('vi') }}</div>
             <p class="text-white/60 text-xs max-w-[34ch]">Dùng xu để tặng quà khi xem livestream. MVP không hỗ trợ rút tiền.</p>
             <LnBtn variant="gold" size="sm" icon="plus" class="mt-3" @click="topup = true">Nạp thêm xu</LnBtn>
@@ -113,7 +113,7 @@ const badgeBg: Record<string, string> = { son: 'bg-son-soft', gold: 'bg-gold-sof
                 <LnIcon :name="t.kind === 'topup' ? 'plus' : 'gift'" :size="16" :class="t.coins < 0 ? 'text-son' : 'text-success'" />
               </div>
               <div><div class="font-body text-[0.8125rem] font-semibold">{{ t.description }}</div><div class="text-xs text-ink-3 mt-px">{{ fmtTxnTime(t.created_at) }}{{ t.status === 'failed' ? ' · thất bại' : '' }}</div></div>
-              <div class="ml-auto font-body font-bold text-[0.95rem] tabular-nums" :class="t.coins < 0 ? 'text-error' : 'text-success'">{{ t.coins > 0 ? '+' : '' }}{{ t.coins }}</div>
+              <div class="ml-auto font-body font-bold text-[0.95rem] tabular-nums" :class="t.coins < 0 ? 'text-error capitalize' : 'text-success'">{{ t.coins > 0 ? '+' : '' }}{{ t.coins }}</div>
             </div>
           </div>
         </LnCard>
