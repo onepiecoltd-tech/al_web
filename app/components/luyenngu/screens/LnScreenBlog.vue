@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DOMPurify from 'isomorphic-dompurify'
 import { cn } from '~/lib/utils'
 import { useLnCtx } from '~/composables/useLnCtx'
 import type { BlogPost, Comment, Paginated } from '~/types/api'
@@ -17,6 +18,8 @@ const posts = computed(() => res.value.data)
 const totalPages = computed(() => res.value.meta.total_pages)
 watch(page, () => { open.value = null })
 const post = computed(() => (open.value !== null ? posts.value[open.value] : null))
+// admin-authored HTML — sanitize before rendering to block stored XSS
+const postBodyHtml = computed(() => DOMPurify.sanitize(post.value?.body ?? ''))
 
 function fmtDate(iso: string) {
   const d = new Date(iso)
@@ -69,11 +72,7 @@ async function sendComment() {
       <LnBtn variant="outline" size="sm" icon="user-plus">Theo dõi</LnBtn>
     </div>
     <div class="h-[200px] rounded-xl-ln bg-son-soft grid place-items-center my-4"><LnIcon name="lightbulb" :size="44" class="text-son" /></div>
-    <div class="font-body text-[1.0625rem] text-ink-2 leading-[1.75]">
-      <p class="mb-4">{{ post.excerpt }}</p>
-      <p class="mb-4">Bí quyết nằm ở việc coi mỗi gạch đầu dòng như một "chặng" của câu chuyện: mở đầu bằng bối cảnh, dẫn qua hành động, rồi chốt bằng cảm xúc hoặc bài học. Khi luyện, hãy bấm giờ 2 phút và thu âm — nghe lại để bắt những chỗ ngập ngừng.</p>
-      <p>Quan trọng nhất: đừng học thuộc. Hãy luyện với cue card forecast mỗi ngày, rồi thách đấu bạn bè để giữ áp lực thật.</p>
-    </div>
+    <div class="font-body text-[1.0625rem] text-ink-2 leading-[1.75]" v-html="postBodyHtml" />
 
     <div class="mt-6 flex items-center gap-3.5 bg-son-soft border border-son-line rounded-lg-ln p-4">
       <LnIcon name="swords" :size="24" class="text-son" />

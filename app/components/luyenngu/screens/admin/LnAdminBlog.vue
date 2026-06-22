@@ -135,10 +135,7 @@ async function remove(id: string) {
           <textarea v-model="form.excerpt" rows="2" placeholder="Mô tả ngắn hiển thị ở danh sách" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] text-ink placeholder:text-ink-4 focus:outline-none focus:border-son resize-y" />
         </div>
 
-        <div class="flex flex-col gap-1.5">
-          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Nội dung</label>
-          <textarea v-model="form.body" rows="6" placeholder="Nội dung bài viết" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] text-ink placeholder:text-ink-4 focus:outline-none focus:border-son resize-y" />
-        </div>
+        <LnRichEditor v-model="form.body" label="Nội dung" placeholder="Nội dung bài viết…" />
 
         <div class="flex flex-col gap-1.5">
           <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Trạng thái</label>
