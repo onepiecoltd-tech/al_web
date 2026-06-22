@@ -1,12 +1,109 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
-import { SOURCES } from '~/composables/useLnData'
+import type { AdminExam, Paginated, Question } from '~/types/api'
 
 const tab = ref('nguon')
+const toast = useToast()
 
-// --- Nguồn đề ---
-const iconTone: Record<string, string> = { PDF: 'son', DOCX: 'reu', TXT: 'gold', XLSX: 'reu' }
+// --- Nguồn đề: đề người dùng tự tải lên ---
+const { data: mineRes, refresh: refreshMine } = await useFetch<Paginated<AdminExam>>('/api/exams/mine', {
+  query: { limit: 50 },
+  default: () => ({ data: [], meta: { page: 1, limit: 50, total: 0, total_pages: 0 } }),
+})
+const myExams = computed(() => mineRes.value.data)
+
+const fileInput = ref<HTMLInputElement>()
+const drop = ref(false)
+const uploading = ref(false)
+// 0-100 while bytes upload, then null while AI extracts (no progress signal)
+const uploadPct = ref<number | null>(null)
+const aiBusy = ref(false)
+const MAX = 5 * 1024 * 1024
+
+function fileExt(name: string) {
+  const i = name.lastIndexOf('.')
+  return i >= 0 ? name.slice(i + 1).toUpperCase() : '?'
+}
+function fmtWhen(iso: string) {
+  const d = new Date(iso)
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+const iconTone: Record<string, string> = { PDF: 'son', TXT: 'gold' }
 const sourceIconBg: Record<string, string> = { son: 'bg-son-soft text-son-deep', reu: 'bg-reu-soft text-reu-deep', gold: 'bg-gold-soft text-gold-deep' }
+
+function pickAndUpload(f?: File | null) {
+  if (!f || uploading.value)
+    return
+  if (!/\.(pdf|txt)$/i.test(f.name)) {
+    toast.err('Chỉ hỗ trợ tệp PDF hoặc TXT.')
+    return
+  }
+  if (f.size > MAX) {
+    toast.err('Tệp vượt quá giới hạn 5MB.')
+    return
+  }
+  uploading.value = true
+  uploadPct.value = 0
+  aiBusy.value = false
+  const fd = new FormData()
+  fd.append('file', f)
+  const xhr = new XMLHttpRequest()
+  xhr.open('POST', '/api/exams/upload')
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable)
+      uploadPct.value = Math.round((e.loaded / e.total) * 100)
+  }
+  xhr.upload.onload = () => { aiBusy.value = true }
+  xhr.onload = async () => {
+    uploading.value = false
+    uploadPct.value = null
+    aiBusy.value = false
+    if (xhr.status >= 200 && xhr.status < 300) {
+      const res = JSON.parse(xhr.responseText)
+      toast.ok(`Đã tải lên — AI trích được ${res.imported} câu hỏi.`)
+      await refreshMine()
+    }
+    else {
+      toast.err(JSON.parse(xhr.responseText)?.statusMessage ?? 'Tải lên thất bại.')
+    }
+  }
+  xhr.onerror = () => {
+    uploading.value = false
+    uploadPct.value = null
+    aiBusy.value = false
+    toast.err('Tải lên thất bại.')
+  }
+  xhr.send(fd)
+}
+function onDrop(e: DragEvent) {
+  e.preventDefault()
+  drop.value = false
+  pickAndUpload(e.dataTransfer?.files?.[0])
+}
+
+// --- Xem chi tiết đề đã tải lên ---
+const detailOpen = ref(false)
+const detailLoading = ref(false)
+const detailExam = ref<AdminExam | null>(null)
+const detailQuestions = ref<Question[]>([])
+async function openDetail(id: string) {
+  detailOpen.value = true
+  detailLoading.value = true
+  detailExam.value = null
+  detailQuestions.value = []
+  try {
+    const res = await $fetch<{ exam: AdminExam, questions: Question[] }>(`/api/exams/${id}`)
+    detailExam.value = res.exam
+    detailQuestions.value = res.questions
+  }
+  catch {
+    toast.err('Không tải được nội dung đề.')
+    detailOpen.value = false
+  }
+  finally {
+    detailLoading.value = false
+  }
+}
 
 // --- Giải đề AI ---
 const msgs = [
@@ -21,7 +118,6 @@ const phase = ref<'setup' | 'quiz'>('setup')
 const src = ref<'bank' | 'source'>('bank')
 const count = ref(20)
 const picked = ref(0)
-const readySources = SOURCES.filter(s => s.state === 'ready')
 const srcOptions: [string, string, string][] = [['bank', 'Ngân hàng có sẵn', 'file-stack'], ['source', 'Từ đề của bạn ✦', 'sparkles']]
 
 // --- Quiz ---
@@ -36,23 +132,43 @@ const opts: [string, string][] = [['A', 'has been delayed'], ['B', 'was delaying
     <!-- ============ NGUỒN ĐỀ ============ -->
     <div v-if="tab === 'nguon'" class="grid grid-cols-[1.6fr_1fr] gap-4 items-start max-[1040px]:grid-cols-1">
       <div>
-        <div class="border-[1.5px] border-dashed border-line-strong rounded-lg-ln bg-paper-2 text-center text-ink-3 p-10">
+        <div
+          :class="cn(
+            'border-[1.5px] border-dashed rounded-lg-ln text-center p-10 transition-colors',
+            uploading ? 'opacity-60 pointer-events-none' : 'cursor-pointer',
+            drop ? 'border-son bg-son-soft' : 'border-line-strong bg-paper-2 text-ink-3',
+          )"
+          @dragover.prevent="drop = true"
+          @dragleave="drop = false"
+          @drop="onDrop"
+          @click="fileInput?.click()"
+        >
+          <input ref="fileInput" type="file" accept=".pdf,.txt,application/pdf,text/plain" class="hidden" @change="pickAndUpload(($event.target as HTMLInputElement).files?.[0])">
           <LnIcon name="upload-cloud" :size="30" class="text-ink-4 mx-auto mb-2.5" />
           <div class="font-body text-base">Kéo-thả tệp vào đây hoặc <b class="text-son">chọn từ máy</b></div>
-          <div class="text-ink-3 text-xs mt-2">PDF · DOCX · XLSX · TXT · ảnh — tối đa 10MB</div>
+          <div class="text-ink-3 text-xs mt-2">PDF · TXT — tối đa 5MB · AI tự tách câu hỏi</div>
         </div>
-        <div class="mt-3.5 flex gap-2.5 items-start bg-paper-1 border border-line rounded-lg-ln p-4">
-          <LnIcon name="info" :size="18" class="text-info mt-0.5" />
-          <div class="font-body text-[0.9375rem] text-ink-2">Gói Free nạp <b>1 nguồn</b>. Nâng cấp Pro để nạp không giới hạn và tạo đề từ nguồn của bạn. <a class="font-bold cursor-pointer text-son">Nâng cấp →</a></div>
+        <div v-if="uploadPct !== null || aiBusy" class="mt-2.5">
+          <div class="h-1.5 rounded-full bg-paper-2 overflow-hidden">
+            <div :class="cn('h-full bg-son transition-[width]', aiBusy && 'animate-pulse')" :style="{ width: `${aiBusy ? 100 : uploadPct}%` }" />
+          </div>
+          <div class="text-xs text-ink-3 mt-1">{{ aiBusy ? 'Đang xử lý bằng AI… có thể mất 1-2 phút' : `Đang tải lên… ${uploadPct}%` }}</div>
         </div>
       </div>
       <div class="flex flex-col gap-3">
-        <div class="flex items-center justify-between"><b class="font-body text-base font-bold">Đã nạp ({{ SOURCES.length }})</b><LnBadge tone="gold" status>Pro</LnBadge></div>
-        <div v-for="s in SOURCES" :key="s.name" class="bg-paper-0 border border-line rounded-lg-ln p-4 flex gap-3 items-start shadow-sm-ln">
-          <div class="grid place-items-center w-11 h-11 rounded-md-ln flex-none font-body font-extrabold text-[0.8rem]" :class="sourceIconBg[iconTone[s.type]]">{{ s.type }}</div>
-          <div class="flex-1 min-w-0"><div class="font-body text-base font-bold truncate">{{ s.name }}</div><div class="text-xs text-ink-3 mt-0.5">{{ s.chars }} ký tự · {{ s.when }}</div></div>
-          <LnBadge v-if="s.state === 'ready'" tone="success">Sẵn sàng</LnBadge>
-          <LnBadge v-else tone="info">Đang đọc</LnBadge>
+        <b class="font-body text-base font-bold">Đề của bạn ({{ myExams.length }})</b>
+        <div v-if="!myExams.length" class="text-ink-3 font-body text-[0.9375rem] bg-paper-1 border border-line rounded-lg-ln p-4 text-center">
+          Chưa có đề nào. Tải lên tệp PDF/TXT để bắt đầu.
+        </div>
+        <div
+          v-for="e in myExams"
+          :key="e.id"
+          class="bg-paper-0 border border-line rounded-lg-ln p-4 flex gap-3 items-start shadow-sm-ln cursor-pointer transition-colors hover:bg-paper-1"
+          @click="openDetail(e.id)"
+        >
+          <div class="grid place-items-center w-11 h-11 rounded-md-ln flex-none font-body font-extrabold text-[0.8rem]" :class="sourceIconBg[iconTone[fileExt(e.name)] ?? 'reu']">{{ iconTone[fileExt(e.name)] ? fileExt(e.name) : 'ĐỀ' }}</div>
+          <div class="flex-1 min-w-0"><div class="font-body text-base font-bold truncate">{{ e.name }}</div><div class="text-xs text-ink-3 mt-0.5">{{ e.questions }} câu · {{ fmtWhen(e.created_at) }}</div></div>
+          <LnBadge tone="success">Sẵn sàng</LnBadge>
         </div>
       </div>
     </div>
@@ -147,19 +263,20 @@ const opts: [string, string][] = [['A', 'has been delayed'], ['B', 'was delaying
             >
               <LnIcon :name="ic" :size="20" class="text-son" />
               <div class="font-body text-base font-bold mt-2">{{ l }}</div>
-              <div class="text-xs text-ink-3 mt-px">{{ v === 'bank' ? '8.000+ câu TOEIC/IELTS' : 'AI sinh từ Cambridge 18 · T2' }}</div>
+              <div class="text-xs text-ink-3 mt-px">{{ v === 'bank' ? '8.000+ câu TOEIC/IELTS' : 'Đề bạn đã tải lên' }}</div>
             </button>
           </div>
           <div v-if="src === 'source'" class="mb-5">
-            <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Chọn nguồn</label>
-            <div class="flex flex-wrap gap-2 mt-2">
+            <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Chọn đề của bạn</label>
+            <div v-if="myExams.length" class="flex flex-wrap gap-2 mt-2">
               <span
-                v-for="(s, i) in readySources"
-                :key="s.name"
+                v-for="(e, i) in myExams"
+                :key="e.id"
                 :class="cn('font-body text-[0.8125rem] rounded-full px-3.5 py-[7px] border cursor-pointer', picked === i ? 'bg-son-soft border-son-line text-son-deep font-bold' : 'border-line-strong bg-paper-0 text-ink-2')"
                 @click="picked = i"
-              >{{ s.name.split(' — ')[0] }}</span>
+              >{{ e.name }}</span>
             </div>
+            <div v-else class="text-ink-3 text-xs mt-2">Chưa có đề nào — tải lên ở tab “Nguồn đề” trước.</div>
           </div>
           <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Số câu</label>
           <div class="flex items-center gap-3 mt-2 mb-6">
@@ -170,5 +287,23 @@ const opts: [string, string][] = [['A', 'has been delayed'], ['B', 'was delaying
         </LnCard>
       </div>
     </template>
+
+    <LnDialog :open="detailOpen" :width="600" @close="detailOpen = false">
+      <div v-if="detailLoading" class="text-center text-ink-3 font-body text-[0.9375rem] py-6">Đang tải…</div>
+      <template v-else-if="detailExam">
+        <div class="flex items-center justify-between mb-1">
+          <b class="font-display text-[1.3125rem] font-bold">{{ detailExam.name }}</b>
+          <LnIconBtn @click="detailOpen = false"><LnIcon name="x" :size="20" /></LnIconBtn>
+        </div>
+        <div class="text-ink-3 font-body text-[0.8125rem] mb-4">{{ detailExam.type }} · {{ detailQuestions.length }} câu hỏi</div>
+        <div v-if="!detailQuestions.length" class="text-ink-3 font-body text-[0.9375rem] text-center py-6">Đề chưa có câu hỏi nào.</div>
+        <div v-else class="flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
+          <div v-for="q in detailQuestions" :key="q.id" class="border border-line rounded-lg-ln p-3.5">
+            <div class="font-body text-[0.9375rem] font-semibold"><span class="text-son">{{ q.position }}.</span> {{ q.prompt }}</div>
+            <div v-if="q.sample_answer" class="text-ink-2 font-body text-[0.875rem] mt-1.5 pl-1 border-l-2 border-line-strong ml-1">{{ q.sample_answer }}</div>
+          </div>
+        </div>
+      </template>
+    </LnDialog>
   </div>
 </template>
