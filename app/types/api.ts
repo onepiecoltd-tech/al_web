@@ -182,6 +182,23 @@ export interface Comment {
   created_at: string
 }
 
+export interface StudyGroup {
+  id: string
+  name: string
+  code: string
+  owner_id: string
+  member_count: number
+  created_at: string
+}
+
+export interface GroupMember {
+  id: string
+  name: string
+  handle: string
+  elo: number
+  presence: Presence
+}
+
 export interface DirectMessage {
   id: string
   sender_id: string
