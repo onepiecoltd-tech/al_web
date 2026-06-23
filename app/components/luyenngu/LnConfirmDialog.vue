@@ -3,7 +3,7 @@ const { state, settle } = useConfirm()
 </script>
 
 <template>
-  <LnDialog :open="state.open" :width="400" @close="settle(false)">
+  <LnDialog :open="state.open" :width="400" elevated @close="settle(false)">
     <div class="flex gap-3.5 items-start">
       <div class="grid place-items-center w-10 h-10 rounded-full flex-none" :class="state.danger ? 'bg-error-bg' : 'bg-son-soft'">
         <LnIcon :name="state.danger ? 'trash-2' : 'help-circle'" :size="20" :class="state.danger ? 'text-error capitalize' : 'text-son'" />

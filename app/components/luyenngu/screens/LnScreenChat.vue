@@ -18,9 +18,11 @@ const confirm = useConfirm()
 
 // friend management dialog
 const friendDlg = ref(false)
+const friendTab = ref<'suggest' | 'friends' | 'requests'>('suggest')
 const searchQ = ref('')
 const searchResults = ref<UserMini[]>([])
 const friendBusy = ref(false)
+const { data: requests, refresh: refreshRequests } = await useFetch<Friend[]>('/api/friends/requests', { default: () => [] })
 
 async function doSearch() {
   searchResults.value = await $fetch<UserMini[]>('/api/users/search', { query: { q: searchQ.value } })
@@ -28,7 +30,9 @@ async function doSearch() {
 function openFriendDlg() {
   searchQ.value = ''
   friendDlg.value = true
+  friendTab.value = requests.value.length ? 'requests' : 'suggest'
   doSearch()
+  refreshRequests()
 }
 watch(searchQ, doSearch)
 
@@ -36,11 +40,39 @@ async function addFriend(u: UserMini) {
   friendBusy.value = true
   try {
     await $fetch('/api/friends', { method: 'POST', body: { friend_id: u.id } })
-    await Promise.all([refreshFriends(), doSearch()])
-    toast.ok(`Đã thêm ${u.name} vào danh sách bạn bè.`)
+    await Promise.all([refreshFriends(), refreshRequests(), doSearch()])
+    toast.ok(`Đã gửi lời mời kết bạn tới ${u.name}.`)
   }
   catch {
-    toast.err('Không thể thêm bạn. Vui lòng thử lại.')
+    toast.err('Không thể gửi lời mời. Vui lòng thử lại.')
+  }
+  finally {
+    friendBusy.value = false
+  }
+}
+async function acceptRequest(u: Friend) {
+  friendBusy.value = true
+  try {
+    await $fetch(`/api/friends/requests/${u.id}/accept`, { method: 'POST' })
+    await Promise.all([refreshFriends(), refreshRequests(), doSearch()])
+    toast.ok(`Bạn và ${u.name} đã trở thành bạn bè.`)
+  }
+  catch {
+    toast.err('Không thể chấp nhận lời mời. Vui lòng thử lại.')
+  }
+  finally {
+    friendBusy.value = false
+  }
+}
+async function declineRequest(u: Friend) {
+  friendBusy.value = true
+  try {
+    await $fetch(`/api/friends/${u.id}`, { method: 'DELETE' })
+    await Promise.all([refreshRequests(), doSearch()])
+    toast.ok(`Đã từ chối lời mời từ ${u.name}.`)
+  }
+  catch {
+    toast.err('Không thể từ chối lời mời. Vui lòng thử lại.')
   }
   finally {
     friendBusy.value = false
@@ -91,7 +123,13 @@ function openChat(i: number) { active.value = i; view.value = 'chat' }
   <div class="grid grid-cols-[290px_minmax(0,1fr)] gap-4 h-[calc(100vh-60px-3rem)] max-[720px]:grid-cols-1 max-[720px]:h-auto">
     <!-- friends list -->
     <LnCard class="!p-0 flex flex-col overflow-hidden">
-      <div class="flex items-center justify-between px-3.5 pt-3.5 pb-2.5"><b class="font-body text-base font-bold">Bạn bè</b><LnBtn variant="ghost" size="sm" icon="user-plus" @click="openFriendDlg" /></div>
+      <div class="flex items-center justify-between px-3.5 pt-3.5 pb-2.5">
+        <b class="font-body text-base font-bold">Bạn bè</b>
+        <div class="relative">
+          <LnBtn variant="ghost" size="sm" icon="user-plus" @click="openFriendDlg" />
+          <span v-if="requests.length" class="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 grid place-items-center rounded-full bg-son text-white text-[0.6rem] font-bold tabular-nums pointer-events-none">{{ requests.length }}</span>
+        </div>
+      </div>
       <div class="px-3 pb-2.5"><LnSearch placeholder="Tìm bạn…" /></div>
       <div class="px-3 pb-1.5">
         <LnBtn variant="secondary" icon="message-square-text" class="w-full" @click="ctx.openMessenger">Mở Messenger cổ điển</LnBtn>
@@ -208,30 +246,63 @@ function openChat(i: number) { active.value = i; view.value = 'chat' }
         <LnIconBtn @click="friendDlg = false"><LnIcon name="x" :size="20" /></LnIconBtn>
       </div>
 
-      <LnField v-model="searchQ" placeholder="Tìm theo tên, email hoặc @handle…" />
+      <LnTabs
+        v-model="friendTab"
+        :tabs="[
+          { v: 'suggest', label: 'Gợi ý' },
+          { v: 'friends', label: `Bạn bè (${friends.length})` },
+          { v: 'requests', label: requests.length ? `Lời mời (${requests.length})` : 'Lời mời' },
+        ]"
+        class="mb-3.5"
+      />
 
-      <div class="mt-3 max-h-[240px] overflow-y-auto">
-        <div v-if="searchResults.length" class="text-ink-3 text-xs font-semibold mb-1.5">Kết quả</div>
-        <div v-for="u in searchResults" :key="u.id" class="flex items-center gap-2.5 py-2 border-b border-line-soft last:border-0">
-          <LnAvatar :name="u.name" color="reu" :size="32" />
-          <div class="flex-1 min-w-0">
-            <div class="font-body text-[0.875rem] font-semibold">{{ u.name }}</div>
-            <div class="text-xs text-ink-3">{{ u.handle }} · ELO {{ u.elo }}</div>
-          </div>
-          <LnBtn variant="outline" size="sm" icon="user-plus" :disabled="friendBusy" @click="addFriend(u)">Kết bạn</LnBtn>
+      <!-- fixed-height shell so switching tabs doesn't resize/flick the dialog -->
+      <div class="h-[400px] flex flex-col">
+        <div v-if="friendTab === 'suggest'" class="flex-none">
+          <LnField v-model="searchQ" placeholder="Tìm theo tên, email hoặc @handle…" />
         </div>
-        <p v-if="searchQ && !searchResults.length" class="text-ink-3 text-xs py-3">Không tìm thấy người dùng phù hợp.</p>
-      </div>
 
-      <div class="mt-4">
-        <div class="text-ink-3 text-xs font-semibold mb-1.5">Bạn bè ({{ friends.length }})</div>
-        <div v-for="f in friends" :key="f.id" class="flex items-center gap-2.5 py-2 border-b border-line-soft last:border-0">
-          <LnAvatar :name="f.name" color="son" :size="32" :status="f.presence" />
-          <div class="flex-1 min-w-0">
-            <div class="font-body text-[0.875rem] font-semibold">{{ f.name }}</div>
-            <div class="text-xs text-ink-3">{{ f.handle }}</div>
-          </div>
-          <LnBtn variant="ghost" size="sm" icon="user-minus" :disabled="friendBusy" @click="removeFriend(f)">Xóa</LnBtn>
+        <div class="flex-1 overflow-y-auto mt-3">
+          <!-- suggestions / search -->
+          <template v-if="friendTab === 'suggest'">
+            <div v-for="u in searchResults" :key="u.id" class="flex items-center gap-2.5 py-2 border-b border-line-soft last:border-0">
+              <LnAvatar :name="u.name" color="reu" :size="32" />
+              <div class="flex-1 min-w-0">
+                <div class="font-body text-[0.875rem] font-semibold">{{ u.name }}</div>
+                <div class="text-xs text-ink-3">{{ u.handle }} · ELO {{ u.elo }}</div>
+              </div>
+              <LnBtn v-if="u.friend_status === 'pending_sent'" variant="ghost" size="sm" icon="clock" disabled>Đã gửi lời mời</LnBtn>
+              <LnBtn v-else variant="outline" size="sm" icon="user-plus" :disabled="friendBusy" @click="addFriend(u)">Kết bạn</LnBtn>
+            </div>
+            <p v-if="!searchResults.length" class="text-ink-3 text-xs py-3">{{ searchQ ? 'Không tìm thấy người dùng phù hợp.' : 'Không có gợi ý nào.' }}</p>
+          </template>
+
+          <!-- friend list -->
+          <template v-else-if="friendTab === 'friends'">
+            <div v-for="f in friends" :key="f.id" class="flex items-center gap-2.5 py-2 border-b border-line-soft last:border-0">
+              <LnAvatar :name="f.name" color="son" :size="32" :status="f.presence" />
+              <div class="flex-1 min-w-0">
+                <div class="font-body text-[0.875rem] font-semibold">{{ f.name }}</div>
+                <div class="text-xs text-ink-3">{{ f.handle }}</div>
+              </div>
+              <LnBtn variant="ghost" size="sm" icon="user-minus" :disabled="friendBusy" @click="removeFriend(f)">Xóa</LnBtn>
+            </div>
+            <p v-if="!friends.length" class="text-ink-3 text-xs py-3">Chưa có bạn bè nào.</p>
+          </template>
+
+          <!-- incoming requests -->
+          <template v-else>
+            <div v-for="u in requests" :key="u.id" class="flex items-center gap-2.5 py-2 border-b border-line-soft last:border-0">
+              <LnAvatar :name="u.name" color="gold" :size="32" />
+              <div class="flex-1 min-w-0">
+                <div class="font-body text-[0.875rem] font-semibold">{{ u.name }}</div>
+                <div class="text-xs text-ink-3">{{ u.handle }}</div>
+              </div>
+              <LnBtn variant="primary" size="sm" icon="check" :disabled="friendBusy" @click="acceptRequest(u)">Chấp nhận</LnBtn>
+              <LnBtn variant="ghost" size="sm" icon="x" :disabled="friendBusy" @click="declineRequest(u)" />
+            </div>
+            <p v-if="!requests.length" class="text-ink-3 text-xs py-3">Không có lời mời nào.</p>
+          </template>
         </div>
       </div>
     </LnDialog>

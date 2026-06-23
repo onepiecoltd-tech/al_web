@@ -162,6 +162,7 @@ export interface UserMini {
   name: string
   handle: string
   elo: number
+  friend_status: 'none' | 'pending_sent'
 }
 
 export interface LeaderboardRow {
