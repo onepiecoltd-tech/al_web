@@ -288,15 +288,82 @@ function sendChat(text?: string) {
 }
 
 // --- Làm đề ---
-const phase = ref<'setup' | 'quiz'>('setup')
-const src = ref<'bank' | 'source'>('bank')
-const count = ref(20)
-const picked = ref(0)
-const srcOptions: [string, string, string][] = [['bank', 'Ngân hàng có sẵn', 'file-stack'], ['source', 'Từ đề của bạn ✦', 'sparkles']]
+// Questions here are free-text prompt + sample_answer (no multiple-choice
+// data), so grading is self-reported rather than auto-scored.
+const phase = ref<'setup' | 'quiz' | 'done'>('setup')
+const src = ref<'bank' | 'source'>('source')
+const srcOptions: [string, string, string][] = [['source', 'Từ đề của bạn ✦', 'sparkles'], ['bank', 'Ngân hàng có sẵn', 'file-stack']]
+const { data: bankRes } = await useFetch<Paginated<AdminExam>>('/api/exams/bank', {
+  query: { limit: 50 },
+  default: () => ({ data: [], meta: { page: 1, limit: 50, total: 0, total_pages: 0 } }),
+})
+const bankExams = computed(() => bankRes.value.data)
+const pickableExams = computed(() => src.value === 'bank' ? bankExams.value : myExams.value)
+const picked = ref<string | null>(null)
+const count = ref(10)
+const quizQuestions = ref<Question[]>([])
+const quizIdx = ref(0)
+const quizAnswer = ref('')
+const quizRevealed = ref(false)
+const quizGrades = ref<(boolean | null)[]>([])
+const quizLoading = ref(false)
 
-// --- Quiz ---
-const sel = ref<string | null>(null)
-const opts: [string, string][] = [['A', 'has been delayed'], ['B', 'was delaying'], ['C', 'delayed'], ['D', 'is delayed']]
+const quizCurrent = computed(() => quizQuestions.value[quizIdx.value])
+const quizScore = computed(() => quizGrades.value.filter(g => g === true).length)
+
+watch(src, () => { picked.value = null })
+
+async function startQuiz() {
+  if (!picked.value)
+    return
+  quizLoading.value = true
+  try {
+    const url = src.value === 'bank' ? `/api/exams/bank/${picked.value}` : `/api/exams/${picked.value}`
+    const res = await $fetch<{ questions: Question[] }>(url)
+    quizQuestions.value = res.questions.slice(0, count.value)
+    if (!quizQuestions.value.length) {
+      toast.err('Đề này chưa có câu hỏi nào.')
+      return
+    }
+    quizIdx.value = 0
+    quizAnswer.value = ''
+    quizRevealed.value = false
+    quizGrades.value = quizQuestions.value.map(() => null)
+    phase.value = 'quiz'
+  }
+  catch {
+    toast.err('Không tải được câu hỏi.')
+  }
+  finally {
+    quizLoading.value = false
+  }
+}
+function revealAnswer() {
+  quizRevealed.value = true
+}
+function gradeSelf(correct: boolean) {
+  quizGrades.value[quizIdx.value] = correct
+}
+function nextQuestion() {
+  if (quizIdx.value < quizQuestions.value.length - 1) {
+    quizIdx.value++
+    quizAnswer.value = ''
+    quizRevealed.value = false
+  }
+  else {
+    phase.value = 'done'
+  }
+}
+function prevQuestion() {
+  if (quizIdx.value > 0) {
+    quizIdx.value--
+    quizAnswer.value = ''
+    quizRevealed.value = false
+  }
+}
+function restartQuiz() {
+  phase.value = 'setup'
+}
 </script>
 
 <template>
@@ -416,42 +483,52 @@ const opts: [string, string][] = [['A', 'has been delayed'], ['B', 'was delaying
     <!-- ============ LÀM ĐỀ ============ -->
     <template v-else>
       <!-- quiz view -->
-      <div v-if="phase === 'quiz'" class="max-w-[720px]">
+      <div v-if="phase === 'quiz' && quizCurrent" class="max-w-[720px]">
         <div class="flex items-center justify-between mb-4">
           <LnBtn variant="ghost" size="sm" icon="x" @click="phase = 'setup'">Thoát</LnBtn>
-          <div class="flex items-center gap-3.5">
-            <LnBadge tone="info"><LnIcon name="clock" :size="13" class="inline mr-1" />12:48</LnBadge>
-            <span class="text-ink-3 font-body text-[0.8125rem] font-semibold">Câu 7 / {{ count }}</span>
-          </div>
+          <span class="text-ink-3 font-body text-[0.8125rem] font-semibold">Câu {{ quizIdx + 1 }} / {{ quizQuestions.length }}</span>
         </div>
-        <LnProgress :value="(7 / count) * 100" class="mb-6" />
+        <LnProgress :value="((quizIdx + 1) / quizQuestions.length) * 100" class="mb-6" />
         <LnCard pop class="!p-8">
-          <span class="text-xs font-extrabold capitalize tracking-[0.12em] text-son">TOEIC · Part 5</span>
-          <p class="font-display text-[1.3125rem] font-semibold my-[22px] mt-3">The shipment ______ due to a customs inspection at the port.</p>
-          <div class="flex flex-col gap-2.5">
-            <button
-              v-for="[k, v] in opts"
-              :key="k"
-              type="button"
-              :class="cn('flex gap-3 items-center cursor-pointer text-left border rounded-lg-ln p-4', sel === k ? 'border-son bg-son-soft' : 'border-line bg-paper-0')"
-              @click="sel = k"
-            >
-              <span :class="cn('grid place-items-center w-[26px] h-[26px] rounded-full border-[1.5px] font-body text-[0.8rem] font-bold flex-none', sel === k ? 'border-son bg-son text-white' : 'border-line-strong text-ink-2')">{{ k }}</span>
-              <span class="font-body text-[1.0625rem]">{{ v }}</span>
-            </button>
+          <p class="font-display text-[1.3125rem] font-semibold mb-[22px]">{{ quizCurrent.prompt }}</p>
+          <textarea
+            v-model="quizAnswer"
+            :disabled="quizRevealed"
+            rows="3"
+            class="w-full bg-paper-2 border border-line rounded-lg-ln p-3 font-body text-[0.9375rem] text-ink placeholder:text-ink-4 focus:outline-none focus:border-son disabled:opacity-70"
+            placeholder="Nhập câu trả lời của bạn…"
+          />
+          <div v-if="quizRevealed" class="mt-4 bg-paper-2 rounded-lg-ln p-3.5">
+            <b class="font-body text-[0.8125rem] text-ink-2">Đáp án mẫu</b>
+            <p class="font-body text-[0.9375rem] mt-1">{{ quizCurrent.sample_answer || 'Đề này chưa có đáp án mẫu.' }}</p>
+            <div class="flex gap-2 mt-3">
+              <LnBtn :variant="quizGrades[quizIdx] === true ? 'primary' : 'outline'" size="sm" icon="check" @click="gradeSelf(true)">Mình làm đúng</LnBtn>
+              <LnBtn :variant="quizGrades[quizIdx] === false ? 'primary' : 'outline'" size="sm" icon="x" @click="gradeSelf(false)">Mình làm sai</LnBtn>
+            </div>
           </div>
         </LnCard>
         <div class="flex items-center justify-between mt-5">
-          <LnBtn variant="outline" icon="chevron-left">Câu trước</LnBtn>
-          <LnBtn variant="primary" icon-r="chevron-right">Câu tiếp</LnBtn>
+          <LnBtn variant="outline" icon="chevron-left" :disabled="quizIdx === 0" @click="prevQuestion">Câu trước</LnBtn>
+          <LnBtn v-if="!quizRevealed" variant="primary" @click="revealAnswer">Xem đáp án</LnBtn>
+          <LnBtn v-else variant="primary" icon-r="chevron-right" @click="nextQuestion">{{ quizIdx === quizQuestions.length - 1 ? 'Hoàn thành' : 'Câu tiếp' }}</LnBtn>
         </div>
+      </div>
+
+      <!-- done view -->
+      <div v-else-if="phase === 'done'" class="max-w-[480px]">
+        <LnCard pop class="text-center !py-10">
+          <LnIcon name="party-popper" :size="32" class="text-son mx-auto mb-3" />
+          <b class="font-display text-[1.3125rem] font-bold">Hoàn thành!</b>
+          <p class="text-ink-3 font-body text-[0.9375rem] mt-2">Bạn tự chấm đúng {{ quizScore }} / {{ quizQuestions.length }} câu.</p>
+          <LnBtn variant="primary" class="mt-5" @click="restartQuiz">Làm đề khác</LnBtn>
+        </LnCard>
       </div>
 
       <!-- setup view -->
       <div v-else class="max-w-[640px]">
         <LnCard pop>
           <b class="font-display text-[1.3125rem] font-bold">Tạo bài luyện</b>
-          <p class="text-ink-3 font-body text-[0.9375rem] mt-1 mb-[18px]">Chọn nguồn câu hỏi và số câu, làm có giờ, chấm tự động.</p>
+          <p class="text-ink-3 font-body text-[0.9375rem] mt-1 mb-[18px]">Tự chấm: làm câu, xem đáp án mẫu rồi đánh giá đúng/sai cho bản thân.</p>
           <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Nguồn câu hỏi</label>
           <div class="flex gap-4 mt-2 mb-5">
             <button
@@ -463,27 +540,24 @@ const opts: [string, string][] = [['A', 'has been delayed'], ['B', 'was delaying
             >
               <LnIcon :name="ic" :size="20" class="text-son" />
               <div class="font-body text-base font-bold mt-2">{{ l }}</div>
-              <div class="text-xs text-ink-3 mt-px">{{ v === 'bank' ? '8.000+ câu TOEIC/IELTS' : 'Đề bạn đã tải lên' }}</div>
+              <div class="text-xs text-ink-3 mt-px">{{ v === 'bank' ? `${bankExams.length} đề có sẵn` : 'Đề bạn đã tải lên' }}</div>
             </button>
           </div>
-          <div v-if="src === 'source'" class="mb-5">
-            <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Chọn đề của bạn</label>
-            <div v-if="myExams.length" class="flex flex-wrap gap-2 mt-2">
-              <span
-                v-for="(e, i) in myExams"
-                :key="e.id"
-                :class="cn('font-body text-[0.8125rem] rounded-full px-3.5 py-[7px] border cursor-pointer', picked === i ? 'bg-son-soft border-son-line text-son-deep font-bold' : 'border-line-strong bg-paper-0 text-ink-2')"
-                @click="picked = i"
-              >{{ e.name }}</span>
-            </div>
-            <div v-else class="text-ink-3 text-xs mt-2">Chưa có đề nào — tải lên ở tab “Nguồn đề” trước.</div>
+          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">{{ src === 'bank' ? 'Chọn đề trong ngân hàng' : 'Chọn đề của bạn' }}</label>
+          <div v-if="pickableExams.length" class="flex flex-wrap gap-2 mt-2 mb-5">
+            <span
+              v-for="e in pickableExams"
+              :key="e.id"
+              :class="cn('font-body text-[0.8125rem] rounded-full px-3.5 py-[7px] border cursor-pointer', picked === e.id ? 'bg-son-soft border-son-line text-son-deep font-bold' : 'border-line-strong bg-paper-0 text-ink-2')"
+              @click="picked = e.id"
+            >{{ e.name }}</span>
           </div>
+          <div v-else class="text-ink-3 text-xs mt-2 mb-5">{{ src === 'bank' ? 'Ngân hàng chưa có đề nào.' : 'Chưa có đề nào — tải lên ở tab “Nguồn đề” trước.' }}</div>
           <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Số câu</label>
           <div class="flex items-center gap-3 mt-2 mb-6">
             <LnSegment v-model="count" :options="[{ v: 10, label: '10' }, { v: 20, label: '20' }, { v: 40, label: '40' }]" />
-            <span class="text-ink-3 text-xs">≈ {{ Math.round(count * 0.75) }} phút</span>
           </div>
-          <LnBtn variant="primary" size="lg" icon="play" class="w-full" @click="phase = 'quiz'">Bắt đầu làm bài</LnBtn>
+          <LnBtn variant="primary" size="lg" icon="play" class="w-full" :disabled="!picked || quizLoading" @click="startQuiz">{{ quizLoading ? 'Đang tải…' : 'Bắt đầu làm bài' }}</LnBtn>
         </LnCard>
       </div>
     </template>

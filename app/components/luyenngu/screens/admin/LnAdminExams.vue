@@ -193,7 +193,7 @@ async function saveEdit() {
             </td>
             <td class="px-4 py-3 border-b border-line-soft align-middle">
               <div class="flex gap-1 justify-end items-center">
-                <LnBtn v-if="e.state === 'review'" variant="secondary" size="sm" @click="update(e, { state: 'published' })">Duyệt</LnBtn>
+                <LnBtn v-if="e.state !== 'published'" variant="secondary" size="sm" @click="update(e, { state: 'published' })">{{ e.state === 'review' ? 'Duyệt' : 'Đăng' }}</LnBtn>
                 <LnIconBtn :size="32" title="Xem chi tiết" @click="navigateTo(localePath(`/admin/de-thi/${e.id}`))"><LnIcon name="eye" :size="15" /></LnIconBtn>
                 <LnIconBtn :size="32" title="Sửa" @click="openEdit(e)"><LnIcon name="pen-line" :size="15" /></LnIconBtn>
                 <LnIconBtn :size="32" title="Xóa" @click="remove(e)"><LnIcon name="trash-2" :size="15" class="text-error capitalize" /></LnIconBtn>
