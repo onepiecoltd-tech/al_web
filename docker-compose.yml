@@ -8,9 +8,13 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    # NUXT_* / NITRO_* config is read from .env at runtime by the Nitro
+    # server (SSR), including NUXT_PUBLIC_GOOGLE_CLIENT_ID and NUXT_API_BASE.
+    # Public runtime config is serialized into the page payload, so passing it
+    # to the running container is enough — no rebuild needed.
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
       NITRO_PORT: "3000"
       NITRO_HOST: "0.0.0.0"
-      # Build/runtime secret read from .env (or the shell env)
-      NUXT_OG_IMAGE_SECRET: ${NUXT_OG_IMAGE_SECRET}
