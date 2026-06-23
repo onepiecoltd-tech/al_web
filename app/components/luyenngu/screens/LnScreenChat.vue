@@ -2,7 +2,7 @@
 import { cn } from '~/lib/utils'
 import { type AvatarColor } from '~/composables/useLnData'
 import { useLnCtx } from '~/composables/useLnCtx'
-import type { Friend, Gift, UserMini } from '~/types/api'
+import type { DirectMessage, Friend, Gift, UserMini } from '~/types/api'
 
 const ctx = useLnCtx()
 const active = ref(0)
@@ -97,6 +97,90 @@ async function removeFriend(f: Friend) {
   }
 }
 const f = computed(() => friends.value[active.value])
+
+// --- Realtime 1:1 chat ---
+// conversations[friendId] = message history with that friend, loaded lazily
+// the first time you open their conversation and kept in sync from there by
+// the single page-level SSE subscription below.
+const conversations = ref<Record<string, DirectMessage[]>>({})
+const convoLoading = ref(false)
+const messageInput = ref('')
+const sending = ref(false)
+const chatBody = ref<HTMLElement>()
+
+async function loadConversation(friendId: string) {
+  if (conversations.value[friendId])
+    return
+  convoLoading.value = true
+  try {
+    conversations.value[friendId] = await $fetch<DirectMessage[]>(`/api/messages/${friendId}`)
+  }
+  catch {
+    toast.err('Không tải được lịch sử chat.')
+  }
+  finally {
+    convoLoading.value = false
+  }
+}
+async function scrollChatToBottom() {
+  await nextTick()
+  if (chatBody.value)
+    chatBody.value.scrollTop = chatBody.value.scrollHeight
+}
+watch(() => f.value?.id, async (id) => {
+  if (!id)
+    return
+  await loadConversation(id)
+  scrollChatToBottom()
+}, { immediate: true })
+
+async function sendMessage() {
+  const friendId = f.value?.id
+  const body = messageInput.value.trim()
+  if (!friendId || !body)
+    return
+  sending.value = true
+  try {
+    const msg = await $fetch<DirectMessage>(`/api/messages/${friendId}`, { method: 'POST', body: { body } })
+    ;(conversations.value[friendId] ??= []).push(msg)
+    messageInput.value = ''
+    scrollChatToBottom()
+  }
+  catch {
+    toast.err('Không gửi được tin nhắn.')
+  }
+  finally {
+    sending.value = false
+  }
+}
+
+// One WebSocket connection for the whole page — incoming messages from any
+// friend land here and get appended to that friend's conversation if
+// already loaded (so the open conversation updates live; others just wait
+// for the user to open them, at which point loadConversation fetches the
+// latest). Same-origin connection to Nitro, which bridges to Go — see
+// server/api/messages/ws.ts.
+let dmSocket: WebSocket | null = null
+onMounted(() => {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
+  dmSocket = new WebSocket(`${proto}//${location.host}/api/messages/ws`)
+  dmSocket.onmessage = (ev) => {
+    let msg: DirectMessage
+    try {
+      msg = JSON.parse(ev.data)
+    }
+    catch {
+      return
+    }
+    const list = conversations.value[msg.sender_id]
+    if (list) {
+      list.push(msg)
+      if (f.value?.id === msg.sender_id)
+        scrollChatToBottom()
+    }
+  }
+})
+onUnmounted(() => dmSocket?.close())
 
 const avatarPalette: AvatarColor[] = ['son', 'reu', 'gold', 'ink']
 const avatarColor = (i: number): AvatarColor => avatarPalette[i % avatarPalette.length]!
@@ -206,19 +290,25 @@ function openChat(i: number) { active.value = i; view.value = 'chat' }
           <LnIconBtn title="Thông tin"><LnIcon name="info" :size="20" /></LnIconBtn>
         </div>
       </div>
-      <div class="flex-1 overflow-y-auto bg-paper-1 p-3.5 flex flex-col gap-2.5">
-        <div class="text-center text-xs text-ink-3 my-1">Hôm nay</div>
-        <div class="max-w-[78%] px-3 py-2 rounded-[14px] font-body text-[0.9375rem] bg-paper-0 border border-line self-start rounded-bl-[4px]">Tối nay luyện Part 2 chứ? 🎧</div>
-        <div class="max-w-[78%] px-3 py-2 rounded-[14px] font-body text-[0.9375rem] bg-son text-white self-end rounded-br-[4px]">Ok, mình lấy cue card forecast tuần này nhé</div>
-        <div class="max-w-[78%] px-3 py-2 rounded-[14px] font-body text-[0.9375rem] bg-paper-0 border border-line self-start rounded-bl-[4px]">Để mình mở phòng. Sẵn đấu phát âm luôn 💪</div>
-        <div class="self-center bg-gold-soft text-gold-deep border border-dashed border-gold-line font-bold text-[0.8rem] px-3 py-2 rounded-[14px]">⚡ {{ f?.name }} đã Buzz bạn!</div>
-        <div class="max-w-[78%] px-3 py-2 rounded-[14px] font-body text-[0.9375rem] bg-son text-white self-end rounded-br-[4px]">Hahaha vào liền 🔥</div>
+      <div ref="chatBody" class="flex-1 overflow-y-auto bg-paper-1 p-3.5 flex flex-col gap-2.5">
+        <div v-if="convoLoading" class="text-center text-ink-3 font-body text-[0.875rem] m-auto">Đang tải lịch sử chat…</div>
+        <div v-else-if="!f || !conversations[f.id]?.length" class="text-center text-ink-3 font-body text-[0.875rem] m-auto">Chưa có tin nhắn nào. Bắt đầu trò chuyện nhé!</div>
+        <div
+          v-for="m in (f ? conversations[f.id] : []) ?? []"
+          :key="m.id"
+          class="max-w-[78%] px-3 py-2 rounded-[14px] font-body text-[0.9375rem]"
+          :class="m.sender_id === me?.id ? 'bg-son text-white self-end rounded-br-[4px]' : 'bg-paper-0 border border-line self-start rounded-bl-[4px]'"
+        >{{ m.body }}</div>
       </div>
       <div class="flex gap-2 p-[11px] border-t border-line bg-paper-0 items-center">
-        <LnIconBtn :size="38"><LnIcon name="smile" :size="20" /></LnIconBtn>
-        <LnIconBtn :size="38" title="Buzz"><LnIcon name="zap" :size="20" class="text-gold-deep" /></LnIconBtn>
-        <div class="flex-1 bg-paper-2 border border-line rounded-full px-3.5 py-2 font-body text-[0.9375rem] text-ink-4">Nhắn tin tới {{ f?.name }}…</div>
-        <LnBtn variant="primary" size="sm" icon="send" class="!px-2.5 !py-2" />
+        <input
+          v-model="messageInput"
+          :disabled="sending"
+          class="flex-1 bg-paper-2 border border-line rounded-full px-3.5 py-2 font-body text-[0.9375rem] text-ink placeholder:text-ink-4 focus:outline-none focus:border-son disabled:opacity-60"
+          :placeholder="`Nhắn tin tới ${f?.name ?? ''}…`"
+          @keyup.enter="sendMessage"
+        >
+        <LnBtn variant="primary" size="sm" icon="send" class="!px-2.5 !py-2" :disabled="sending || !messageInput.trim()" @click="sendMessage" />
       </div>
     </LnCard>
 

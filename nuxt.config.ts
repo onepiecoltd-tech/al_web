@@ -36,6 +36,12 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
 
+  nitro: {
+    // Lets the BFF expose its own WebSocket route (server/routes/api/messages/ws.ts),
+    // which bridges to the Go API's WebSocket — browser never talks to Go directly.
+    experimental: { websocket: true },
+  },
+
   shadcn: {
     prefix: '',
     componentDir: './app/components/ui',

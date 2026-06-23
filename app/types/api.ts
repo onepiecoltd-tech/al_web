@@ -182,6 +182,14 @@ export interface Comment {
   created_at: string
 }
 
+export interface DirectMessage {
+  id: string
+  sender_id: string
+  receiver_id: string
+  body: string
+  created_at: string
+}
+
 export interface BlogPost {
   id: string
   title: string
