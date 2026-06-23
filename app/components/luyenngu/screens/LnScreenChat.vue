@@ -182,6 +182,17 @@ onMounted(() => {
 })
 onUnmounted(() => dmSocket?.close())
 
+// Keep friends' online dots current by re-fetching the list periodically —
+// presence is derived server-side from each friend's last heartbeat.
+let presenceTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  presenceTimer = setInterval(() => { refreshFriends() }, 30_000)
+})
+onUnmounted(() => {
+  if (presenceTimer)
+    clearInterval(presenceTimer)
+})
+
 const avatarPalette: AvatarColor[] = ['son', 'reu', 'gold', 'ink']
 const avatarColor = (i: number): AvatarColor => avatarPalette[i % avatarPalette.length]!
 
@@ -215,9 +226,9 @@ function openChat(i: number) { active.value = i; view.value = 'chat' }
         </div>
       </div>
       <div class="px-3 pb-2.5"><LnSearch placeholder="Tìm bạn…" /></div>
-      <div class="px-3 pb-1.5">
+      <!-- <div class="px-3 pb-1.5">
         <LnBtn variant="secondary" icon="message-square-text" class="w-full" @click="ctx.openMessenger">Mở Messenger cổ điển</LnBtn>
-      </div>
+      </div> -->
       <div class="overflow-y-auto flex-1 px-2 py-1.5">
         <button
           v-for="(fr, i) in friends"
@@ -284,11 +295,11 @@ function openChat(i: number) { active.value = i; view.value = 'chat' }
           <LnAvatar :name="f?.name ?? ''" :color="avatarColor(active)" :size="36" :status="f?.presence" />
           <div><div class="font-body text-base font-bold">{{ f?.name }}</div><div class="text-xs" :class="f?.presence === 'online' ? 'text-success' : 'text-ink-3'">{{ statusLabel[f?.presence ?? 'offline'] }}</div></div>
         </div>
-        <div class="flex gap-0.5">
+        <!-- <div class="flex gap-0.5">
           <LnIconBtn title="Gọi video" @click="callOpen = true"><LnIcon name="video" :size="20" /></LnIconBtn>
           <LnIconBtn title="Livestream" @click="view = 'live'"><LnIcon name="radio" :size="20" /></LnIconBtn>
           <LnIconBtn title="Thông tin"><LnIcon name="info" :size="20" /></LnIconBtn>
-        </div>
+        </div> -->
       </div>
       <div ref="chatBody" class="flex-1 overflow-y-auto bg-paper-1 p-3.5 flex flex-col gap-2.5">
         <div v-if="convoLoading" class="text-center text-ink-3 font-body text-[0.875rem] m-auto">Đang tải lịch sử chat…</div>
