@@ -1,110 +1,214 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
 import type { AvatarColor } from '~/composables/useLnData'
-import { useLnCtx } from '~/composables/useLnCtx'
-import type { LeaderboardRow } from '~/types/api'
+import type { Duel, Friend, LeaderboardRow } from '~/types/api'
 
-const ctx = useLnCtx()
 const { me } = useMe()
+const toast = useToast()
+
 const { data: board } = await useFetch<LeaderboardRow[]>('/api/leaderboard', { default: () => [] })
+const { data: friends } = await useFetch<Friend[]>('/api/friends', { default: () => [] })
+const { data: duels, refresh: refreshDuels } = await useFetch<Duel[]>('/api/duels', { default: () => [] })
+
+const incoming = computed(() => duels.value.filter(d => d.status === 'pending' && d.opponent_id === me.value?.id))
+const outgoing = computed(() => duels.value.filter(d => d.status === 'pending' && d.challenger_id === me.value?.id))
+const history = computed(() => duels.value.filter(d => d.status === 'completed'))
 
 const avatarPalette: AvatarColor[] = ['son', 'reu', 'gold', 'ink']
 const avatarColor = (i: number): AvatarColor => avatarPalette[i % avatarPalette.length]!
-const phase = ref<'lobby' | 'searching' | 'vs' | 'result'>('lobby')
-let timer: ReturnType<typeof setTimeout> | undefined
-
-watch(phase, (p) => {
-  if (timer) clearTimeout(timer)
-  if (p === 'searching') timer = setTimeout(() => { phase.value = 'vs' }, 2200)
-})
-onBeforeUnmount(() => timer && clearTimeout(timer))
-
 const rankColor = (i: number) => ['text-gold-deep', 'text-[#8d8d8d]', 'text-[#a9743f]'][i] || 'text-ink-3'
+
+const PROMPTS = [
+  'The quick brown fox jumps over the lazy dog.',
+  'She sells seashells by the seashore.',
+  'Innovation distinguishes between a leader and a follower.',
+  'A journey of a thousand miles begins with a single step.',
+  'The early bird catches the worm but the second mouse gets the cheese.',
+  'How much wood would a woodchuck chuck if a woodchuck could chuck wood.',
+]
+const randomPrompt = () => PROMPTS[Math.floor(Math.random() * PROMPTS.length)]!
+
+const speech = useSpeechScore()
+
+// --- challenge a friend ---
+const challengeOpen = ref(false)
+const opponentId = ref<string | null>(null)
+const challengePrompt = ref('')
+const challengeScore = ref<number | null>(null)
+const challengeBusy = ref(false)
+function openChallenge() {
+  opponentId.value = friends.value[0]?.id ?? null
+  challengePrompt.value = randomPrompt()
+  challengeScore.value = null
+  speech.heard.value = ''
+  challengeOpen.value = true
+}
+async function recordChallenge() {
+  if (speech.recording.value) {
+    speech.stop()
+    return
+  }
+  try {
+    challengeScore.value = await speech.record(challengePrompt.value)
+  }
+  catch {
+    toast.err(speech.supported.value ? 'Không nghe rõ. Hãy thử lại.' : 'Trình duyệt không hỗ trợ nhận diện giọng nói (hãy dùng Chrome).')
+  }
+}
+async function sendChallenge() {
+  if (!opponentId.value || challengeScore.value === null)
+    return
+  challengeBusy.value = true
+  try {
+    await $fetch('/api/duels', { method: 'POST', body: { opponent_id: opponentId.value, prompt: challengePrompt.value, score: challengeScore.value } })
+    await refreshDuels()
+    challengeOpen.value = false
+    toast.ok('Đã gửi lời thách đấu!')
+  }
+  catch (e) {
+    const err = e as { data?: { statusMessage?: string } }
+    toast.err(err.data?.statusMessage ?? 'Không gửi được thách đấu.')
+  }
+  finally {
+    challengeBusy.value = false
+  }
+}
+
+// --- respond to a challenge ---
+const respondOpen = ref(false)
+const respondDuel = ref<Duel | null>(null)
+const respondScore = ref<number | null>(null)
+const respondResult = ref<Duel | null>(null)
+const respondBusy = ref(false)
+function openRespond(d: Duel) {
+  respondDuel.value = d
+  respondScore.value = null
+  respondResult.value = null
+  speech.heard.value = ''
+  respondOpen.value = true
+}
+async function recordRespond() {
+  if (!respondDuel.value)
+    return
+  if (speech.recording.value) {
+    speech.stop()
+    return
+  }
+  try {
+    respondScore.value = await speech.record(respondDuel.value.prompt)
+  }
+  catch {
+    toast.err(speech.supported.value ? 'Không nghe rõ. Hãy thử lại.' : 'Trình duyệt không hỗ trợ nhận diện giọng nói (hãy dùng Chrome).')
+  }
+}
+async function submitRespond() {
+  if (!respondDuel.value || respondScore.value === null)
+    return
+  respondBusy.value = true
+  try {
+    respondResult.value = await $fetch<Duel>(`/api/duels/${respondDuel.value.id}/respond`, { method: 'POST', body: { score: respondScore.value } })
+    await refreshDuels()
+  }
+  catch {
+    toast.err('Không gửi được kết quả.')
+  }
+  finally {
+    respondBusy.value = false
+  }
+}
+async function decline(d: Duel) {
+  try {
+    await $fetch(`/api/duels/${d.id}/decline`, { method: 'POST' })
+    await refreshDuels()
+    toast.ok('Đã từ chối lời thách đấu.')
+  }
+  catch {
+    toast.err('Không từ chối được.')
+  }
+}
+
+// outcome helpers (from the current user's perspective)
+const myId = computed(() => me.value?.id)
+function myDelta(d: Duel) {
+  return d.challenger_id === myId.value ? d.challenger_delta : d.opponent_delta
+}
+function won(d: Duel) {
+  return !!d.winner_id && d.winner_id === myId.value
+}
+function draw(d: Duel) {
+  return d.status === 'completed' && !d.winner_id
+}
+function opponentName(d: Duel) {
+  return d.challenger_id === myId.value ? d.opponent_name : d.challenger_name
+}
 </script>
 
 <template>
-  <!-- SEARCHING -->
-  <div v-if="phase === 'searching'" class="grid place-items-center min-h-[460px]">
-    <div class="text-center">
-      <div class="w-[120px] h-[120px] mx-auto relative">
-        <span
-          v-for="i in 3"
-          :key="i"
-          class="absolute inset-0 rounded-full border-2 border-son opacity-0"
-          :style="{ animation: `ln-ping 1.8s ${(i - 1) * 0.6}s cubic-bezier(0,0,.2,1) infinite` }"
-        />
-        <div class="absolute inset-7 rounded-full bg-son grid place-items-center"><LnIcon name="swords" :size="28" class="text-white" /></div>
-      </div>
-      <h2 class="font-display font-bold text-[1.75rem] mt-7">Đang tìm đối thủ…</h2>
-      <p class="text-ink-3 font-body text-[0.9375rem] mt-1.5">Ghép với người chơi ELO 1.450–1.520</p>
-    </div>
-  </div>
-
-  <!-- VS -->
-  <div v-else-if="phase === 'vs'" class="max-w-[720px] mx-auto">
-    <div class="relative overflow-hidden bg-ink text-white rounded-xl-ln p-10 before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(220,74,51,.32),transparent_60%)]">
-      <div class="relative grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-        <div class="text-center">
-          <div class="w-16 h-16 rounded-full mx-auto mb-2.5 grid place-items-center font-display font-extrabold text-[1.2rem] bg-son">{{ (me?.name ?? '?')[0] }}</div>
-          <div class="font-body text-base font-bold">{{ me?.name }}</div><div class="text-xs text-white/60 mt-0.5">ELO {{ me?.elo }} · {{ me?.rank }}</div>
-        </div>
-        <div class="font-display font-black text-2xl leading-none italic text-son-bright">VS</div>
-        <div class="text-center">
-          <div class="w-16 h-16 rounded-full mx-auto mb-2.5 grid place-items-center font-display font-extrabold text-[1.2rem] bg-reu">K</div>
-          <div class="font-body text-base font-bold">Khánh</div><div class="text-xs text-white/60 mt-0.5">ELO 1.521 · Vàng</div>
-        </div>
-      </div>
-      <div class="relative bg-white/10 rounded-md-ln px-[18px] py-4 mt-6 text-center text-white font-body text-[1.0625rem]">"The quick brown fox jumps over the lazy dog."</div>
-      <div class="relative h-2 rounded-full bg-white/15 mt-[18px] overflow-hidden"><span class="absolute inset-y-0 left-0 right-[42%] bg-son-bright" /></div>
-      <div class="relative flex justify-between mt-2.5 text-xs text-white/70"><span>Bạn · 58%</span><span>⏱ 00:12</span><span>Khánh · 42%</span></div>
-    </div>
-    <div class="flex justify-center mt-[22px]">
-      <LnBtn variant="primary" size="lg" icon="mic" @click="phase = 'result'">Đọc to câu trên</LnBtn>
-    </div>
-  </div>
-
-  <!-- RESULT -->
-  <div v-else-if="phase === 'result'" class="max-w-[560px] mx-auto text-center">
-    <div class="text-[3.4rem]">👑</div>
-    <h2 class="font-display font-extrabold text-[2.5rem] mt-1.5">Chiến thắng!</h2>
-    <p class="text-ink-3 font-body text-[1.0625rem] mt-1">Độ khớp 58% so với 42% của Khánh</p>
-    <LnCard pop class="mt-6 !p-8">
-      <div class="flex justify-around items-center">
-        <div><div class="text-ink-3 text-xs">ELO trước</div><div class="font-display font-extrabold text-[1.8rem]">1.482</div></div>
-        <div class="text-success flex items-center gap-1.5"><LnIcon name="arrow-right" :size="20" /><span class="font-display font-extrabold text-[1.3rem]">+14</span></div>
-        <div><div class="text-ink-3 text-xs">ELO mới</div><div class="font-display font-extrabold text-[1.8rem] text-success">1.496</div></div>
-      </div>
-    </LnCard>
-    <div class="flex gap-3 mt-[22px]">
-      <LnBtn variant="secondary" icon="radio" class="flex-1" @click="ctx.go('ban-be')">Phát trực tiếp trận này</LnBtn>
-      <LnBtn variant="primary" icon="swords" class="flex-1" @click="phase = 'searching'">Đấu tiếp</LnBtn>
-    </div>
-    <LnBtn variant="ghost" size="sm" class="mt-3" @click="phase = 'lobby'">Về sảnh thách đấu</LnBtn>
-  </div>
-
-  <!-- LOBBY -->
-  <div v-else class="grid grid-cols-[1.6fr_1fr] gap-4 items-start max-[1040px]:grid-cols-1">
+  <div class="grid grid-cols-[1.6fr_1fr] gap-4 items-start max-[1040px]:grid-cols-1">
+    <!-- left -->
     <div class="flex flex-col gap-4">
+      <!-- rank card -->
       <div class="relative overflow-hidden bg-ink text-white rounded-xl-ln p-8 before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(220,74,51,.32),transparent_60%)]">
         <div class="relative">
           <LnBadge status class="bg-white/15 text-white">Hạng của bạn</LnBadge>
           <div class="flex items-center gap-[18px] mt-4">
             <div class="w-[72px] h-[72px] rounded-full bg-gold grid place-items-center font-display font-extrabold text-[1.6rem] text-white">🏆</div>
-            <div><div class="font-display font-extrabold text-[2.2rem] text-white">1.482</div><div class="text-white/65 font-body text-[0.9375rem]">Hạng Vàng · #14 tuần này</div></div>
+            <div>
+              <div class="font-display font-extrabold text-[2.2rem] text-white">{{ me?.elo }}</div>
+              <div class="text-white/65 font-body text-[0.9375rem]">Hạng {{ me?.rank }} · {{ me?.wins }} trận thắng</div>
+            </div>
           </div>
-          <div class="relative h-2 rounded-full bg-white/15 mt-5 overflow-hidden"><span class="absolute inset-y-0 left-0 right-[22%] bg-son-bright" /></div>
-          <div class="flex justify-between mt-2.5 text-xs text-white/70"><span>1.482</span><span class="text-white/85">còn 18 điểm lên Bạch Kim</span><span>1.500</span></div>
         </div>
       </div>
-      <LnBtn variant="primary" size="lg" icon="swords" @click="phase = 'searching'">Tìm đối thủ ngẫu nhiên</LnBtn>
-      <div class="flex gap-3">
-        <LnBtn variant="outline" icon="user-plus" class="flex-1">Mời đích danh</LnBtn>
-        <LnBtn variant="outline" icon="radio" class="flex-1">Xem trận live</LnBtn>
-      </div>
+
+      <LnBtn variant="primary" size="lg" icon="swords" @click="openChallenge">Thách đấu bạn bè</LnBtn>
+
+      <!-- incoming challenges -->
+      <LnCard v-if="incoming.length">
+        <b class="font-body text-base font-bold">Lời thách đấu ({{ incoming.length }})</b>
+        <div v-for="d in incoming" :key="d.id" class="flex items-center gap-3 py-[11px] border-b border-line-soft last:border-0">
+          <LnAvatar :name="d.challenger_name" color="reu" :size="36" />
+          <div class="flex-1 min-w-0">
+            <div class="font-body text-[0.9375rem] font-semibold">{{ d.challenger_name }}</div>
+            <div class="text-xs text-ink-3 truncate">"{{ d.prompt }}"</div>
+          </div>
+          <LnBtn variant="primary" size="sm" icon="mic" @click="openRespond(d)">Đấu</LnBtn>
+          <LnBtn variant="ghost" size="sm" icon="x" @click="decline(d)" />
+        </div>
+      </LnCard>
+
+      <!-- recent results -->
+      <LnCard v-if="history.length">
+        <b class="font-body text-base font-bold">Kết quả gần đây</b>
+        <div v-for="d in history" :key="d.id" class="flex items-center gap-3 py-[11px] border-b border-line-soft last:border-0">
+          <div :class="cn('grid place-items-center w-9 h-9 rounded-md-ln flex-none text-white', won(d) ? 'bg-success' : draw(d) ? 'bg-ink-4' : 'bg-error')">
+            <LnIcon :name="won(d) ? 'trophy' : draw(d) ? 'minus' : 'x'" :size="16" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="font-body text-[0.9375rem] font-semibold">vs {{ opponentName(d) }}</div>
+            <div class="text-xs text-ink-3">{{ won(d) ? 'Thắng' : draw(d) ? 'Hòa' : 'Thua' }} · {{ d.challenger_id === myId ? d.challenger_score : d.opponent_score }}% – {{ d.challenger_id === myId ? d.opponent_score : d.challenger_score }}%</div>
+          </div>
+          <span class="font-body font-bold text-[0.9rem]" :class="myDelta(d) >= 0 ? 'text-success' : 'text-error'">{{ myDelta(d) >= 0 ? '+' : '' }}{{ myDelta(d) }}</span>
+        </div>
+      </LnCard>
+
+      <!-- outgoing (waiting) -->
+      <LnCard v-if="outgoing.length">
+        <b class="font-body text-base font-bold">Đang chờ đối thủ</b>
+        <div v-for="d in outgoing" :key="d.id" class="flex items-center gap-3 py-[11px] border-b border-line-soft last:border-0">
+          <LnAvatar :name="d.opponent_name" color="gold" :size="34" />
+          <div class="flex-1 min-w-0">
+            <div class="font-body text-[0.9375rem] font-semibold">{{ d.opponent_name }}</div>
+            <div class="text-xs text-ink-3">Điểm của bạn: {{ d.challenger_score }}%</div>
+          </div>
+          <LnBadge tone="gold" status>Chờ</LnBadge>
+        </div>
+      </LnCard>
     </div>
 
+    <!-- leaderboard -->
     <LnCard>
-      <div class="flex items-center justify-between mb-2"><b class="font-body text-base font-bold">Bảng xếp hạng · tuần</b><span class="text-ink-3 text-xs">theo ELO</span></div>
+      <div class="flex items-center justify-between mb-2"><b class="font-body text-base font-bold">Bảng xếp hạng</b><span class="text-ink-3 text-xs">theo ELO</span></div>
       <div
         v-for="(p, i) in board"
         :key="p.id"
@@ -116,5 +220,60 @@ const rankColor = (i: number) => ['text-gold-deep', 'text-[#8d8d8d]', 'text-[#a9
         <div class="text-right"><div class="font-body font-bold text-[0.95rem]">{{ p.elo }}</div></div>
       </div>
     </LnCard>
+
+    <!-- challenge dialog -->
+    <LnDialog :open="challengeOpen" :width="520" @close="challengeOpen = false">
+      <div class="flex items-center justify-between mb-3.5"><b class="font-display text-[1.3125rem] font-bold">Thách đấu phát âm</b><LnIconBtn @click="challengeOpen = false"><LnIcon name="x" :size="20" /></LnIconBtn></div>
+      <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Đối thủ</label>
+      <select v-if="friends.length" v-model="opponentId" class="w-full mt-2 mb-4 px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] focus:outline-none focus:border-son">
+        <option v-for="fr in friends" :key="fr.id" :value="fr.id">{{ fr.name }}</option>
+      </select>
+      <p v-else class="text-ink-3 text-xs mt-2 mb-4">Bạn chưa có bạn bè nào để thách đấu. Kết bạn ở mục Bạn bè trước.</p>
+
+      <div class="bg-paper-2 border border-line rounded-lg-ln p-4 text-center font-body text-[1.0625rem] mb-4">"{{ challengePrompt }}"</div>
+      <div class="flex flex-col items-center gap-2">
+        <button type="button" :class="cn('grid place-items-center w-16 h-16 rounded-full bg-son text-white border-0 cursor-pointer', speech.recording.value && 'ln-mic-rec')" @click="recordChallenge">
+          <LnIcon name="mic" :size="26" class="text-white" />
+        </button>
+        <p class="text-ink-3 text-xs">{{ speech.recording.value ? 'Đang nghe…' : 'Bấm mic rồi đọc to câu trên' }}</p>
+        <p v-if="challengeScore !== null" class="font-display font-extrabold text-[1.4rem]" :class="challengeScore >= 50 ? 'text-success' : 'text-error'">Độ khớp {{ challengeScore }}%</p>
+        <p v-if="challengeScore !== null && challengeScore < 50" class="text-error text-xs">Cần đạt ít nhất 50% để gửi thách đấu — thử đọc lại.</p>
+      </div>
+      <LnBtn variant="primary" class="w-full mt-4" :disabled="challengeBusy || challengeScore === null || challengeScore < 50 || !opponentId" @click="sendChallenge">{{ challengeBusy ? 'Đang gửi…' : 'Gửi thách đấu' }}</LnBtn>
+    </LnDialog>
+
+    <!-- respond dialog -->
+    <LnDialog :open="respondOpen" :width="520" @close="respondOpen = false">
+      <template v-if="respondResult">
+        <div class="text-center">
+          <div class="text-[3rem]">{{ won(respondResult) ? '👑' : draw(respondResult) ? '🤝' : '💪' }}</div>
+          <h2 class="font-display font-extrabold text-[2rem] mt-1">{{ won(respondResult) ? 'Chiến thắng!' : draw(respondResult) ? 'Hòa!' : 'Thua rồi!' }}</h2>
+          <p class="text-ink-3 font-body text-[0.9375rem] mt-1">Bạn {{ respondResult.opponent_score }}% · {{ respondResult.challenger_name }} {{ respondResult.challenger_score }}%</p>
+          <LnCard pop class="mt-5 !p-6">
+            <div class="flex justify-around items-center">
+              <div><div class="text-ink-3 text-xs">ELO</div><div class="font-display font-extrabold text-[1.6rem]">{{ me?.elo }}</div></div>
+              <div :class="myDelta(respondResult) >= 0 ? 'text-success' : 'text-error'" class="flex items-center gap-1.5">
+                <LnIcon :name="myDelta(respondResult) >= 0 ? 'trending-up' : 'trending-down'" :size="20" />
+                <span class="font-display font-extrabold text-[1.3rem]">{{ myDelta(respondResult) >= 0 ? '+' : '' }}{{ myDelta(respondResult) }}</span>
+              </div>
+            </div>
+          </LnCard>
+          <LnBtn variant="primary" class="w-full mt-5" @click="respondOpen = false">Xong</LnBtn>
+        </div>
+      </template>
+      <template v-else-if="respondDuel">
+        <div class="flex items-center justify-between mb-3.5"><b class="font-display text-[1.3125rem] font-bold">Đấu với {{ respondDuel.challenger_name }}</b><LnIconBtn @click="respondOpen = false"><LnIcon name="x" :size="20" /></LnIconBtn></div>
+        <p class="text-ink-3 font-body text-[0.9375rem] mb-3">{{ respondDuel.challenger_name }} đạt {{ respondDuel.challenger_score }}% — hãy đọc to để vượt qua!</p>
+        <div class="bg-paper-2 border border-line rounded-lg-ln p-4 text-center font-body text-[1.0625rem] mb-4">"{{ respondDuel.prompt }}"</div>
+        <div class="flex flex-col items-center gap-2">
+          <button type="button" :class="cn('grid place-items-center w-16 h-16 rounded-full bg-son text-white border-0 cursor-pointer', speech.recording.value && 'ln-mic-rec')" @click="recordRespond">
+            <LnIcon name="mic" :size="26" class="text-white" />
+          </button>
+          <p class="text-ink-3 text-xs">{{ speech.recording.value ? 'Đang nghe…' : 'Bấm mic rồi đọc to câu trên' }}</p>
+          <p v-if="respondScore !== null" class="font-display font-extrabold text-[1.4rem]" :class="respondScore >= 70 ? 'text-success' : 'text-ink'">Độ khớp {{ respondScore }}%</p>
+        </div>
+        <LnBtn variant="primary" class="w-full mt-4" :disabled="respondBusy || respondScore === null" @click="submitRespond">{{ respondBusy ? 'Đang gửi…' : 'Chốt kết quả' }}</LnBtn>
+      </template>
+    </LnDialog>
   </div>
 </template>

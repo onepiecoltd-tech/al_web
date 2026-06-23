@@ -182,6 +182,23 @@ export interface Comment {
   created_at: string
 }
 
+export interface Duel {
+  id: string
+  challenger_id: string
+  opponent_id: string
+  prompt: string
+  challenger_score: number
+  opponent_score?: number
+  status: 'pending' | 'completed' | 'declined'
+  winner_id?: string
+  challenger_delta: number
+  opponent_delta: number
+  created_at: string
+  completed_at?: string
+  challenger_name: string
+  opponent_name: string
+}
+
 export interface StudyGroup {
   id: string
   name: string
