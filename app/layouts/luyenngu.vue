@@ -22,6 +22,7 @@ const TITLES: Record<string, string> = {
   '/blog': 'Blog', '/ho-so': 'Hồ sơ',
 }
 
+const collapsed = ref(false)
 const { messengerOpen, offline } = useLnApp()
 const auth = useAuthStore()
 const { unread } = useNotifications()
@@ -56,35 +57,45 @@ provide(LN_CTX, ctx)
 </script>
 
 <template>
-  <div class="ln-app grid grid-cols-[248px_minmax(0,1fr)] h-screen bg-paper-bg max-[720px]:grid-cols-1">
+  <div :class="cn('ln-app grid h-screen bg-paper-bg max-[720px]:grid-cols-1 transition-[grid-template-columns] duration-200 ease-in-out', collapsed ? 'grid-cols-[68px_minmax(0,1fr)]' : 'grid-cols-[248px_minmax(0,1fr)]')">
     <!-- SIDEBAR -->
-    <aside class="ln-side flex flex-col bg-paper-1 border-r border-line px-3 py-4 min-h-0
+    <aside class="ln-side flex flex-col bg-paper-1 border-r border-line px-3 py-4 min-h-0 overflow-hidden
       max-[720px]:fixed max-[720px]:bottom-0 max-[720px]:inset-x-0 max-[720px]:top-auto max-[720px]:flex-row max-[720px]:border-r-0 max-[720px]:border-t max-[720px]:z-50 max-[720px]:p-1.5 max-[720px]:h-[60px]">
-      <div class="flex items-center gap-2.5 px-2 pt-1.5 pb-5 max-[720px]:hidden">
-        <LnSeal :size="38" />
-        <div class="font-display font-extrabold text-xl leading-none tracking-tight">LuyệnNgữ</div>
+      <div :class="cn('flex items-center gap-2.5 px-2 pt-1.5 pb-5 max-[720px]:hidden', collapsed && 'flex-col gap-2 px-0')">
+        <LnSeal :size="collapsed ? 30 : 38" />
+        <div v-if="!collapsed" class="font-display font-extrabold text-xl leading-none tracking-tight flex-1">LuyệnNgữ</div>
+        <button
+          type="button"
+          :title="collapsed ? 'Mở rộng' : 'Thu gọn'"
+          class="hidden min-[721px]:flex items-center justify-center w-7 h-7 rounded-md-ln text-ink-3 hover:bg-paper-2 hover:text-ink flex-none"
+          @click="collapsed = !collapsed"
+        >
+          <LnIcon :name="collapsed ? 'chevrons-right' : 'chevrons-left'" :size="18" />
+        </button>
       </div>
       <nav class="flex flex-col gap-0.5 overflow-y-auto flex-1 min-h-0 max-[720px]:flex-row max-[720px]:overflow-x-auto max-[720px]:gap-0 max-[720px]:justify-around max-[720px]:w-full">
         <NuxtLink
           v-for="n in NAV"
           :key="n.id"
           :to="localePath(NAV_PATH[n.id] ?? '/')"
+          :title="collapsed ? n.label : undefined"
           :class="cn(
             'relative flex items-center gap-[11px] px-[11px] py-[9px] rounded-md-ln text-ink-2 font-body text-[0.8125rem] font-semibold cursor-pointer transition-colors duration-150 hover:bg-paper-2 hover:text-ink text-left w-full',
             'max-[720px]:flex-col max-[720px]:gap-[3px] max-[720px]:text-[0.6rem] max-[720px]:px-1 max-[720px]:py-[5px]',
+            collapsed && 'justify-center px-0',
             currentPath === NAV_PATH[n.id] && 'bg-son-soft text-son-deep before:content-[\'\'] before:absolute before:-left-1 before:top-2 before:bottom-2 before:w-[3px] before:rounded-[3px] before:bg-son max-[720px]:before:hidden',
           )"
         >
           <LnIcon :name="n.icon" :size="19" class="flex-none" />
-          <span class="max-[720px]:text-[0.6rem]">{{ n.label }}</span>
-          <span v-if="n.dot" class="ml-auto min-w-[18px] h-[18px] px-[5px] rounded-full bg-son text-white font-body font-bold text-[0.68rem] leading-[18px] text-center max-[720px]:absolute max-[720px]:top-0.5 max-[720px]:right-[calc(50%-18px)]">{{ n.dot }}</span>
+          <span v-if="!collapsed" class="max-[720px]:text-[0.6rem]">{{ n.label }}</span>
+          <span v-if="n.dot" :class="cn('min-w-[18px] h-[18px] px-[5px] rounded-full bg-son text-white font-body font-bold text-[0.68rem] leading-[18px] text-center max-[720px]:absolute max-[720px]:top-0.5 max-[720px]:right-[calc(50%-18px)]', collapsed ? 'absolute top-0.5 right-0.5' : 'ml-auto')">{{ n.dot }}</span>
         </NuxtLink>
       </nav>
       <div class="border-t border-line pt-3 mt-3 max-[720px]:hidden">
-        <div class="flex items-center gap-2.5 px-2 py-[7px] rounded-md-ln">
+        <div :class="cn('flex items-center gap-2.5 px-2 py-[7px] rounded-md-ln', collapsed && 'flex-col gap-2 px-0')">
           <NuxtLink :to="localePath('/ho-so')" class="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer">
             <LnAvatar :name="me?.name ?? ''" color="son" :size="36" status="online" />
-            <div class="min-w-0 flex-1">
+            <div v-if="!collapsed" class="min-w-0 flex-1">
               <div class="font-body text-[0.8125rem] font-bold truncate">{{ me?.name }}</div>
               <div class="text-xs text-ink-3">{{ me?.handle }} · ELO {{ me?.elo }}</div>
             </div>

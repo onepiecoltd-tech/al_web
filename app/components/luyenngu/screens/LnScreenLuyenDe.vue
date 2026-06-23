@@ -153,35 +153,137 @@ function escapeHtml(s: string) {
 function fmt(t: string) {
   return escapeHtml(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>')
 }
+const chatAtBottom = ref(true)
+
+function nearBottom(el: HTMLElement) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 80
+}
+
+function onChatScroll() {
+  if (chatBody.value)
+    chatAtBottom.value = nearBottom(chatBody.value)
+}
+
 async function scrollChatToBottom() {
+  const el = chatBody.value
+  if (!el)
+    return
+  // Don't yank the view down if the user has scrolled up to read earlier text.
+  const atBottom = nearBottom(el)
+  await nextTick()
+  if (atBottom)
+    el.scrollTop = el.scrollHeight
+}
+
+async function forceScrollToBottom() {
   await nextTick()
   if (chatBody.value)
     chatBody.value.scrollTop = chatBody.value.scrollHeight
 }
 
-async function sendChat(text?: string) {
+function sendChat(text?: string) {
   const question = (text ?? chatInput.value).trim()
   if (!question || chatBusy.value || !chatExamId.value)
     return
   chatMsgs.value.push({ role: 'user', text: question })
+  chatMsgs.value.push({ role: 'model', text: '' })
+  const modelIdx = chatMsgs.value.length - 1
   chatInput.value = ''
   chatBusy.value = true
   scrollChatToBottom()
-  try {
-    const res = await $fetch<{ answer: string }>(`/api/exams/${chatExamId.value}/ask`, {
-      method: 'POST',
-      body: { question },
-    })
-    chatMsgs.value.push({ role: 'model', text: res.answer })
+
+  // Gemini doesn't stream evenly — it can sit silent for several seconds
+  // ("thinking") then dump its whole answer in one or two big bursts. Rather
+  // than show that burstiness directly, buffer incoming text and drip it out
+  // to the UI at a steady pace, so it always looks like smooth typing
+  // regardless of how chunky the actual network delivery is.
+  let pending = ''
+  let dripTimer: ReturnType<typeof setInterval> | null = null
+  let streamEnded = false
+  const DRIP_MS = 16
+  const DRIP_CHARS = 2
+
+  function stopDrip() {
+    if (dripTimer) {
+      clearInterval(dripTimer)
+      dripTimer = null
+    }
   }
-  catch (e) {
-    const err = e as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.err(err.data?.statusMessage ?? err.statusMessage ?? 'Không nhận được phản hồi từ AI.')
-    chatMsgs.value.pop()
+  function maybeFinish() {
+    if (streamEnded && !pending.length) {
+      stopDrip()
+      es.close()
+      chatBusy.value = false
+      scrollChatToBottom()
+    }
   }
-  finally {
+  function startDrip() {
+    if (dripTimer)
+      return
+    dripTimer = setInterval(() => {
+      if (pending.length) {
+        chatMsgs.value[modelIdx]!.text += pending.slice(0, DRIP_CHARS)
+        pending = pending.slice(DRIP_CHARS)
+        scrollChatToBottom()
+      }
+      else {
+        stopDrip()
+        maybeFinish()
+      }
+    }, DRIP_MS)
+  }
+  function failNow(message: string) {
+    toast.err(message)
+    stopDrip()
+    // Show whatever was already buffered rather than silently dropping it.
+    if (pending) {
+      chatMsgs.value[modelIdx]!.text += pending
+      pending = ''
+    }
+    if (!chatMsgs.value[modelIdx]!.text) {
+      chatMsgs.value.splice(modelIdx, 1)
+      chatMsgs.value.pop() // the user question that triggered this failed attempt
+    }
+    es.close()
     chatBusy.value = false
     scrollChatToBottom()
+  }
+
+  // EventSource (not fetch+ReadableStream) — Chrome's fetch streaming
+  // buffers the whole response internally for small payloads before handing
+  // any of it to JS, which made short answers appear to "arrive all at
+  // once". EventSource is purpose-built for SSE and doesn't have that issue.
+  const es = new EventSource(`/api/exams/${chatExamId.value}/ask?question=${encodeURIComponent(question)}`)
+  es.onmessage = (ev) => {
+    let payload: { text?: string, error?: string, done?: boolean }
+    try {
+      payload = JSON.parse(ev.data)
+    }
+    catch { return }
+    if (payload.text) {
+      pending += payload.text
+      startDrip()
+    }
+    if (payload.error) {
+      failNow(payload.error)
+      return
+    }
+    if (payload.done) {
+      streamEnded = true
+      // Close now so EventSource doesn't auto-reconnect when the server ends
+      // the stream — the full answer is already buffered in `pending`, and the
+      // drip finishes from there. Reconnecting would re-run the whole Ask.
+      es.close()
+      maybeFinish()
+    }
+  }
+  es.onerror = () => {
+    // The server closes the connection after the final "done" event; EventSource
+    // reports that close as an error (and tries to reconnect). If we already got
+    // "done", the answer is complete — ignore it and let the drip finish.
+    if (streamEnded || es.readyState === EventSource.CLOSED)
+      return
+    failNow('Không nhận được phản hồi từ AI.')
   }
 }
 
@@ -262,21 +364,32 @@ const opts: [string, string][] = [['A', 'has been delayed'], ['B', 'was delaying
               <option v-for="e in myExams" :key="e.id" :value="e.id">{{ e.name }}</option>
             </select>
           </div>
-          <div ref="chatBody" class="flex-1 bg-paper-1 overflow-y-auto p-3.5 flex flex-col gap-2.5">
+          <div class="flex-1 relative min-h-0">
+          <div ref="chatBody" class="absolute inset-0 bg-paper-1 overflow-y-auto p-3.5 flex flex-col gap-2.5" @scroll="onChatScroll">
             <div v-if="chatLoading" class="text-ink-3 font-body text-[0.875rem] text-center m-auto">Đang tải lịch sử chat…</div>
             <div v-else-if="!chatMsgs.length" class="text-ink-3 font-body text-[0.875rem] text-center m-auto max-w-[80%]">
               Hỏi AI bất cứ điều gì về đề này — giải thích câu hỏi, đáp án mẫu, từ vựng…
             </div>
-            <div
-              v-for="(m, i) in chatMsgs"
-              :key="i"
-              class="max-w-[88%] px-3 py-2 rounded-[14px] font-body text-[0.9375rem]"
-              :class="m.role === 'user' ? 'bg-son text-white self-end rounded-br-[4px]' : 'bg-paper-0 border border-line self-start rounded-bl-[4px]'"
-              v-html="fmt(m.text)"
-            />
-            <div v-if="chatBusy" class="bg-paper-0 border border-line self-start rounded-bl-[4px] rounded-[14px] px-3 py-2 flex gap-1.5 items-center w-fit">
-              <span v-for="i in 3" :key="i" class="w-1.5 h-1.5 rounded-full bg-ink-4" :style="{ animation: `ln-blink 1.2s ${(i - 1) * 0.2}s infinite` }" />
-            </div>
+            <template v-for="(m, i) in chatMsgs" :key="i">
+              <div v-if="m.role === 'model' && !m.text" class="bg-paper-0 border border-line self-start rounded-bl-[4px] rounded-[14px] px-3 py-2 flex gap-1.5 items-center w-fit">
+                <span v-for="d in 3" :key="d" class="w-1.5 h-1.5 rounded-full bg-ink-4" :style="{ animation: `ln-blink 1.2s ${(d - 1) * 0.2}s infinite` }" />
+              </div>
+              <div
+                v-else
+                class="max-w-[88%] px-3 py-2 rounded-[14px] font-body text-[0.9375rem]"
+                :class="m.role === 'user' ? 'bg-son text-white self-end rounded-br-[4px]' : 'bg-paper-0 border border-line self-start rounded-bl-[4px]'"
+                v-html="fmt(m.text)"
+              />
+            </template>
+          </div>
+          <button
+            v-if="!chatAtBottom"
+            class="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-paper-0 border border-line shadow-md flex items-center justify-center text-ink-2 hover:bg-paper-1"
+            aria-label="Cuộn xuống cuối"
+            @click="forceScrollToBottom"
+          >
+            <LnIcon name="arrow-down" :size="18" />
+          </button>
           </div>
           <div class="flex gap-2 p-[11px] border-t border-line bg-paper-0 items-center">
             <input
