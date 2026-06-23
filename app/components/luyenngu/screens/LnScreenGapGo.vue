@@ -65,7 +65,7 @@ const scopeLabel: Record<string, string> = { city: 'cùng tỉnh/thành', nearby
 
 <template>
   <!-- 18+ consent gate -->
-  <div v-if="!optIn" class="max-w-[520px] mx-auto">
+  <div v-if="!optIn" class="max-w-[680px] mx-auto">
     <div class="text-center mb-5">
       <div class="w-16 h-16 rounded-xl-ln mx-auto grid place-items-center bg-son"><LnIcon name="shuffle" :size="30" class="text-white" /></div>
       <h2 class="font-display font-bold text-[1.75rem] mt-4">Gặp gỡ — luyện nói với người lạ</h2>

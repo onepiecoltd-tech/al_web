@@ -2,7 +2,13 @@
 import { cn } from '~/lib/utils'
 import type { AdminExam, Paginated, Question } from '~/types/api'
 
-const tab = ref('nguon')
+const VALID_TABS = ['nguon', 'giai', 'lam']
+const route = useRoute()
+const router = useRouter()
+const tab = ref(VALID_TABS.includes(route.query.tab as string) ? (route.query.tab as string) : 'nguon')
+watch(tab, (v) => {
+  router.replace({ query: { ...route.query, tab: v } })
+})
 const toast = useToast()
 
 // --- Nguồn đề: đề người dùng tự tải lên ---
@@ -106,12 +112,78 @@ async function openDetail(id: string) {
 }
 
 // --- Giải đề AI ---
-const msgs = [
-  { me: true, t: 'Giải giúp mình câu 23 trong Cambridge IELTS 18 — Test 2 nhé.' },
-  { me: false, t: 'Câu 23 hỏi về thông tin trong đoạn 4. Đáp án đúng là **B (FALSE)** — bài đọc nói nhiệt độ "remained stable", trái với "rose sharply" trong câu hỏi. Mẹo: gặp trạng từ chỉ mức độ mạnh (sharply, dramatically) hãy đối chiếu kỹ với từ trung tính trong bài.' },
-]
-const fmt = (t: string) => t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
-const quickAsks = ['Giải toàn bộ Part 5', 'Giải thích từ vựng khó', 'Dịch đoạn 3 sang tiếng Việt']
+interface ChatMsg { role: 'user' | 'model'; text: string }
+const chatExamId = ref<string | null>(null)
+const chatMsgs = ref<ChatMsg[]>([])
+const chatLoading = ref(false)
+const chatInput = ref('')
+const chatBusy = ref(false)
+const chatBody = ref<HTMLElement>()
+const quickAsks = ['Giải thích câu đầu tiên', 'Đáp án mẫu cho câu khó nhất là gì?', 'Tóm tắt đề này trong 2 câu']
+
+async function loadChatHistory(id: string) {
+  chatLoading.value = true
+  chatMsgs.value = []
+  try {
+    const res = await $fetch<{ messages: { role: string, text: string }[] }>(`/api/exams/${id}/chat`)
+    chatMsgs.value = res.messages.map(m => ({ role: m.role as 'user' | 'model', text: m.text }))
+    scrollChatToBottom()
+  }
+  catch {
+    toast.err('Không tải được lịch sử chat.')
+  }
+  finally {
+    chatLoading.value = false
+  }
+}
+watch(myExams, (list) => {
+  if (!chatExamId.value && list[0]) {
+    chatExamId.value = list[0].id
+    loadChatHistory(list[0].id)
+  }
+}, { immediate: true })
+function switchChatExam(id: string) {
+  chatExamId.value = id
+  loadChatHistory(id)
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+function fmt(t: string) {
+  return escapeHtml(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>')
+}
+async function scrollChatToBottom() {
+  await nextTick()
+  if (chatBody.value)
+    chatBody.value.scrollTop = chatBody.value.scrollHeight
+}
+
+async function sendChat(text?: string) {
+  const question = (text ?? chatInput.value).trim()
+  if (!question || chatBusy.value || !chatExamId.value)
+    return
+  chatMsgs.value.push({ role: 'user', text: question })
+  chatInput.value = ''
+  chatBusy.value = true
+  scrollChatToBottom()
+  try {
+    const res = await $fetch<{ answer: string }>(`/api/exams/${chatExamId.value}/ask`, {
+      method: 'POST',
+      body: { question },
+    })
+    chatMsgs.value.push({ role: 'model', text: res.answer })
+  }
+  catch (e) {
+    const err = e as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.err(err.data?.statusMessage ?? err.statusMessage ?? 'Không nhận được phản hồi từ AI.')
+    chatMsgs.value.pop()
+  }
+  finally {
+    chatBusy.value = false
+    scrollChatToBottom()
+  }
+}
 
 // --- Làm đề ---
 const phase = ref<'setup' | 'quiz'>('setup')
@@ -175,42 +247,57 @@ const opts: [string, string][] = [['A', 'has been delayed'], ['B', 'was delaying
 
     <!-- ============ GIẢI ĐỀ AI ============ -->
     <div v-else-if="tab === 'giai'" class="grid grid-cols-[1.6fr_1fr] gap-4 items-start max-[1040px]:grid-cols-1">
-      <LnCard pop class="!p-0 overflow-hidden flex flex-col h-[520px]">
-        <div class="flex items-center justify-between px-4 py-3 border-b border-line">
-          <div class="flex items-center gap-2.5"><LnIcon name="sparkles" :size="18" class="text-son" /><b class="font-body text-base font-bold">Trợ lý giải đề</b></div>
-          <div class="inline-flex p-[3px] rounded-full bg-paper-2 border border-line"><span class="px-4 py-[7px] rounded-full bg-paper-0 text-ink shadow-sm-ln font-body text-[0.8125rem] font-bold">Cambridge 18 · T2</span></div>
-        </div>
-        <div class="flex-1 bg-paper-1 overflow-y-auto p-3.5 flex flex-col gap-2.5">
-          <div
-            v-for="(m, i) in msgs"
-            :key="i"
-            class="max-w-[88%] px-3 py-2 rounded-[14px] font-body text-[0.9375rem]"
-            :class="m.me ? 'bg-son text-white self-end rounded-br-[4px]' : 'bg-paper-0 border border-line self-start rounded-bl-[4px]'"
-            v-html="fmt(m.t)"
-          />
-          <div class="bg-paper-0 border border-line self-start rounded-bl-[4px] rounded-[14px] px-3 py-2 flex gap-1.5 items-center w-fit">
-            <span v-for="i in 3" :key="i" class="w-1.5 h-1.5 rounded-full bg-ink-4" :style="{ animation: `ln-blink 1.2s ${(i - 1) * 0.2}s infinite` }" />
-          </div>
-        </div>
-        <div class="flex gap-2 p-[11px] border-t border-line bg-paper-0 items-center">
-          <div class="flex-1 bg-paper-2 border border-line rounded-full px-3.5 py-2 font-body text-[0.9375rem] text-ink-4">Hỏi về câu hỏi bất kỳ trong nguồn…</div>
-          <LnBtn variant="primary" size="sm" icon="send" class="!px-2.5 !py-2" />
-        </div>
+      <LnCard v-if="!myExams.length" pop class="text-center text-ink-3 font-body text-[0.9375rem] py-10">
+        Chưa có đề nào để giải. Tải lên một đề ở tab “Nguồn đề” trước.
       </LnCard>
-      <div class="flex flex-col gap-3.5">
-        <LnCard>
-          <div class="flex items-center justify-between"><b class="font-body text-base font-bold">Lượt giải hôm nay</b><LnBadge tone="son" status>Free</LnBadge></div>
-          <div class="font-display font-extrabold text-[1.9rem] my-2.5">2 <span class="text-ink-3 font-body text-[0.9375rem] font-normal">/ 5 lượt</span></div>
-          <LnProgress :value="40" />
-          <LnBtn variant="gold" size="sm" icon="zap" class="mt-3.5 w-full">Nâng Pro · không giới hạn</LnBtn>
-        </LnCard>
-        <LnCard>
-          <b class="font-body text-base font-bold">Gợi ý nhanh</b>
-          <div class="flex flex-col gap-2 mt-3">
-            <button v-for="q in quickAsks" :key="q" type="button" class="text-left font-body text-[0.8125rem] rounded-full px-3.5 py-[7px] border border-line-strong bg-paper-0 text-ink-2 cursor-pointer transition-colors hover:bg-paper-2">{{ q }}</button>
+      <template v-else>
+        <LnCard pop class="!p-0 overflow-hidden flex flex-col h-[680px]">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-line">
+            <div class="flex items-center gap-2.5"><LnIcon name="sparkles" :size="18" class="text-son" /><b class="font-body text-base font-bold">Trợ lý giải đề</b></div>
+            <select
+              :value="chatExamId"
+              class="px-3 py-[7px] rounded-full bg-paper-2 border border-line font-body text-[0.8125rem] font-bold text-ink focus:outline-none"
+              @change="switchChatExam(($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="e in myExams" :key="e.id" :value="e.id">{{ e.name }}</option>
+            </select>
+          </div>
+          <div ref="chatBody" class="flex-1 bg-paper-1 overflow-y-auto p-3.5 flex flex-col gap-2.5">
+            <div v-if="chatLoading" class="text-ink-3 font-body text-[0.875rem] text-center m-auto">Đang tải lịch sử chat…</div>
+            <div v-else-if="!chatMsgs.length" class="text-ink-3 font-body text-[0.875rem] text-center m-auto max-w-[80%]">
+              Hỏi AI bất cứ điều gì về đề này — giải thích câu hỏi, đáp án mẫu, từ vựng…
+            </div>
+            <div
+              v-for="(m, i) in chatMsgs"
+              :key="i"
+              class="max-w-[88%] px-3 py-2 rounded-[14px] font-body text-[0.9375rem]"
+              :class="m.role === 'user' ? 'bg-son text-white self-end rounded-br-[4px]' : 'bg-paper-0 border border-line self-start rounded-bl-[4px]'"
+              v-html="fmt(m.text)"
+            />
+            <div v-if="chatBusy" class="bg-paper-0 border border-line self-start rounded-bl-[4px] rounded-[14px] px-3 py-2 flex gap-1.5 items-center w-fit">
+              <span v-for="i in 3" :key="i" class="w-1.5 h-1.5 rounded-full bg-ink-4" :style="{ animation: `ln-blink 1.2s ${(i - 1) * 0.2}s infinite` }" />
+            </div>
+          </div>
+          <div class="flex gap-2 p-[11px] border-t border-line bg-paper-0 items-center">
+            <input
+              v-model="chatInput"
+              :disabled="chatBusy"
+              class="flex-1 bg-paper-2 border border-line rounded-full px-3.5 py-2 font-body text-[0.9375rem] text-ink placeholder:text-ink-4 focus:outline-none focus:border-son"
+              placeholder="Hỏi về câu hỏi bất kỳ trong đề…"
+              @keyup.enter="sendChat()"
+            >
+            <LnBtn variant="primary" size="sm" icon="send" class="!px-2.5 !py-2" :disabled="chatBusy || !chatInput.trim()" @click="sendChat()" />
           </div>
         </LnCard>
-      </div>
+        <div class="flex flex-col gap-3.5">
+          <LnCard>
+            <b class="font-body text-base font-bold">Gợi ý nhanh</b>
+            <div class="flex flex-col gap-2 mt-3">
+              <button v-for="q in quickAsks" :key="q" type="button" :disabled="chatBusy" class="text-left font-body text-[0.8125rem] rounded-full px-3.5 py-[7px] border border-line-strong bg-paper-0 text-ink-2 cursor-pointer transition-colors hover:bg-paper-2 disabled:opacity-50" @click="sendChat(q)">{{ q }}</button>
+            </div>
+          </LnCard>
+        </div>
+      </template>
     </div>
 
     <!-- ============ LÀM ĐỀ ============ -->
