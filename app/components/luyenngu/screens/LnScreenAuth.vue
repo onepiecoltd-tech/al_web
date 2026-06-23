@@ -112,7 +112,7 @@ async function submit() {
           </div>
         </div>
       </div>
-      <div class="relative text-xs text-white/50">© 2026 LuyệnNgữ · Nuxt + Go + PostgreSQL</div>
+      <div class="relative text-xs text-white/50">© 2026 LuyệnNgữ</div>
     </div>
 
     <!-- form -->
