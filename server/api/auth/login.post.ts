@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
     const err = e as { response?: { status?: number }, data?: { error?: string } }
     throw createError({
       statusCode: err.response?.status ?? 502,
-      statusMessage: err.data?.error ?? 'Đăng nhập thất bại. Vui lòng thử lại.',
+      message: err.data?.error ?? 'Đăng nhập thất bại. Vui lòng thử lại.',
     })
   }
 

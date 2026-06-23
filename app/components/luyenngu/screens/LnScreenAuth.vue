@@ -34,8 +34,8 @@ async function onGoogleCredential(res: { credential: string }) {
     emit('login')
   }
   catch (e) {
-    const err = e as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.err(err.data?.statusMessage ?? err.statusMessage ?? 'Đăng nhập Google thất bại.')
+    const err = e as { data?: { message?: string } }
+    toast.err(err.data?.message ?? 'Đăng nhập Google thất bại.')
   }
 }
 onMounted(() => {
@@ -79,8 +79,8 @@ async function submit() {
     emit('login')
   }
   catch (e) {
-    const err = e as { data?: { statusMessage?: string }, statusMessage?: string }
-    error.value = err.data?.statusMessage ?? err.statusMessage
+    const err = e as { data?: { message?: string } }
+    error.value = err.data?.message
       ?? (mode.value === 'register' ? 'Đăng ký thất bại. Vui lòng thử lại.' : 'Đăng nhập thất bại. Vui lòng thử lại.')
   }
   finally {

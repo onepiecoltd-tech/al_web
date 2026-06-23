@@ -70,7 +70,7 @@ function pickAndUpload(f?: File | null) {
       await refreshMine()
     }
     else {
-      toast.err(JSON.parse(xhr.responseText)?.statusMessage ?? 'Tải lên thất bại.')
+      toast.err(JSON.parse(xhr.responseText)?.message ?? 'Tải lên thất bại.')
     }
   }
   xhr.onerror = () => {

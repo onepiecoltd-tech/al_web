@@ -71,8 +71,8 @@ async function save() {
     toast.ok(isEdit ? `Đã cập nhật ${form.name}.` : `Đã tạo tài khoản ${form.name}.`)
   }
   catch (e) {
-    const err = e as { data?: { statusMessage?: string }, statusMessage?: string }
-    error.value = err.data?.statusMessage ?? err.statusMessage ?? 'Lưu thất bại. Vui lòng thử lại.'
+    const err = e as { data?: { message?: string } }
+    error.value = err.data?.message ?? 'Lưu thất bại. Vui lòng thử lại.'
   }
   finally {
     saving.value = false

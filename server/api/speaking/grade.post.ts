@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   const audio = parts?.find(p => p.name === 'audio' && p.filename)
   const prompt = parts?.find(p => p.name === 'prompt')?.data.toString()
   if (!audio || !prompt)
-    throw createError({ statusCode: 400, statusMessage: 'Thiếu bản ghi âm hoặc đề bài.' })
+    throw createError({ statusCode: 400, message: 'Thiếu bản ghi âm hoặc đề bài.' })
 
   const fd = new FormData()
   fd.append('audio', new Blob([new Uint8Array(audio.data)], { type: audio.type }), audio.filename)

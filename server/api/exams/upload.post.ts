@@ -4,7 +4,7 @@ export default defineEventHandler(async (event) => {
   const parts = await readMultipartFormData(event)
   const file = parts?.find(p => p.name === 'file' && p.filename)
   if (!file)
-    throw createError({ statusCode: 400, statusMessage: 'Thiếu tệp đề thi.' })
+    throw createError({ statusCode: 400, message: 'Thiếu tệp đề thi.' })
 
   const fd = new FormData()
   fd.append('file', new Blob([new Uint8Array(file.data)], { type: file.type }), file.filename)

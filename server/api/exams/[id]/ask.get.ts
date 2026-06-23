@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     const data = await res.json().catch(() => ({}) as { error?: string })
     throw createError({
       statusCode: res.status || 502,
-      statusMessage: data?.error ?? 'Lỗi máy chủ. Vui lòng thử lại.',
+      message: data?.error ?? 'Lỗi máy chủ. Vui lòng thử lại.',
     })
   }
 

@@ -66,8 +66,8 @@ async function sendChallenge() {
     toast.ok('Đã gửi lời thách đấu!')
   }
   catch (e) {
-    const err = e as { data?: { statusMessage?: string } }
-    toast.err(err.data?.statusMessage ?? 'Không gửi được thách đấu.')
+    const err = e as { data?: { message?: string } }
+    toast.err(err.data?.message ?? 'Không gửi được thách đấu.')
   }
   finally {
     challengeBusy.value = false

@@ -31,8 +31,8 @@ async function submitPost() {
     toast.ok('Đã gửi bài viết — admin sẽ duyệt trước khi hiển thị công khai.')
   }
   catch (e) {
-    const err = e as { data?: { statusMessage?: string }, statusMessage?: string }
-    writeError.value = err.data?.statusMessage ?? err.statusMessage ?? 'Gửi bài thất bại. Vui lòng thử lại.'
+    const err = e as { data?: { message?: string } }
+    writeError.value = err.data?.message ?? 'Gửi bài thất bại. Vui lòng thử lại.'
   }
   finally {
     writeSaving.value = false

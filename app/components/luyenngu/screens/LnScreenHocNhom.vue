@@ -109,8 +109,8 @@ async function join() {
     }
   }
   catch (e) {
-    const err = e as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.err(err.data?.statusMessage ?? err.statusMessage ?? 'Không vào được nhóm. Kiểm tra lại mã.')
+    const err = e as { data?: { message?: string } }
+    toast.err(err.data?.message ?? 'Không vào được nhóm. Kiểm tra lại mã.')
   }
   finally {
     joining.value = false

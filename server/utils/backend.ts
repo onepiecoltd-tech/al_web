@@ -25,7 +25,7 @@ export async function backend<T = unknown>(
     const err = e as { response?: { status?: number }, data?: { error?: string } }
     throw createError({
       statusCode: err.response?.status ?? 502,
-      statusMessage: err.data?.error ?? 'Lỗi máy chủ. Vui lòng thử lại.',
+      message: err.data?.error ?? 'Lỗi máy chủ. Vui lòng thử lại.',
     })
   }
 }

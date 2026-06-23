@@ -64,7 +64,7 @@ function importFile(examId: string, file: File) {
       if (xhr.status >= 200 && xhr.status < 300)
         resolve(JSON.parse(xhr.responseText))
       else
-        reject(new Error(JSON.parse(xhr.responseText)?.statusMessage ?? 'Nhập câu hỏi thất bại.'))
+        reject(new Error(JSON.parse(xhr.responseText)?.message ?? 'Nhập câu hỏi thất bại.'))
     }
     xhr.onerror = () => reject(new Error('Nhập câu hỏi thất bại.'))
     xhr.send(fd)
