@@ -4,14 +4,14 @@ import { useLnApp } from '~/composables/useLnData'
 import { LN_CTX, NAV_PATH, type LnCtx } from '~/composables/useLnCtx'
 import LnMessengerOverlay from '~/components/luyenngu/screens/LnMessengerOverlay.vue'
 
-const NAV = [
+const NAV_BASE = [
   { id: 'trang-chu', label: 'Trang chủ', icon: 'home' },
   { id: 'luyen-de', label: 'Luyện đề', icon: 'file-text' },
   { id: 'luyen-noi', label: 'Luyện nói', icon: 'mic' },
   { id: 'hoc-nhom', label: 'Học nhóm', icon: 'users' },
-  { id: 'thach-dau', label: 'Thách đấu', icon: 'swords', dot: 1 },
+  { id: 'thach-dau', label: 'Thách đấu', icon: 'swords' },
   { id: 'gap-go', label: 'Gặp gỡ', icon: 'shuffle' },
-  { id: 'ban-be', label: 'Bạn bè', icon: 'message-circle', dot: 3 },
+  { id: 'ban-be', label: 'Bạn bè', icon: 'message-circle' },
   { id: 'blog', label: 'Blog', icon: 'newspaper' },
   { id: 'ho-so', label: 'Hồ sơ', icon: 'user' },
 ]
@@ -26,8 +26,15 @@ const collapsed = ref(false)
 const { messengerOpen, offline } = useLnApp()
 const auth = useAuthStore()
 const { unread } = useNotifications()
+const { count: unreadMessages } = useUnreadMessages()
 const { me, isAdmin } = useMe()
 const { coins } = useWallet()
+
+// Inject the live unread-message count as the "Bạn bè" nav badge.
+const NAV = computed(() => NAV_BASE.map(n => ({
+  ...n,
+  dot: n.id === 'ban-be' ? unreadMessages.value : 0,
+})))
 const notifOpen = ref(false)
 const localePath = useLocalePath()
 const route = useRoute()
@@ -88,7 +95,7 @@ provide(LN_CTX, ctx)
         >
           <LnIcon :name="n.icon" :size="19" class="flex-none" />
           <span v-if="!collapsed" class="max-[720px]:text-[0.6rem]">{{ n.label }}</span>
-          <span v-if="n.dot" :class="cn('min-w-[18px] h-[18px] px-[5px] rounded-full bg-son text-white font-body font-bold text-[0.68rem] leading-[18px] text-center max-[720px]:absolute max-[720px]:top-0.5 max-[720px]:right-[calc(50%-18px)]', collapsed ? 'absolute top-0.5 right-0.5' : 'ml-auto')">{{ n.dot }}</span>
+          <span v-if="n.dot" :class="cn('min-w-[18px] h-[18px] px-[5px] rounded-full bg-son text-white font-body font-bold text-[0.68rem] leading-[18px] text-center max-[720px]:absolute max-[720px]:top-0.5 max-[720px]:right-[calc(50%-18px)]', collapsed ? 'absolute top-0.5 right-0.5' : 'ml-auto')">{{ n.dot > 9 ? '9+' : n.dot }}</span>
         </NuxtLink>
       </nav>
       <div class="border-t border-line pt-3 mt-3 max-[720px]:hidden">

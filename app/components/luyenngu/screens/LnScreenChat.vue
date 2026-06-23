@@ -107,6 +107,13 @@ const convoLoading = ref(false)
 const messageInput = ref('')
 const sending = ref(false)
 const chatBody = ref<HTMLElement>()
+const { refresh: refreshUnread } = useUnreadMessages()
+
+// Mark a conversation read on the server, then refresh the sidebar badge.
+async function markRead(friendId: string) {
+  await $fetch(`/api/messages/${friendId}/read`, { method: 'POST' }).catch(() => {})
+  await refreshUnread()
+}
 
 async function loadConversation(friendId: string) {
   if (conversations.value[friendId])
@@ -132,6 +139,7 @@ watch(() => f.value?.id, async (id) => {
     return
   await loadConversation(id)
   scrollChatToBottom()
+  markRead(id) // opening a conversation reads it
 }, { immediate: true })
 
 async function sendMessage() {
@@ -173,10 +181,16 @@ onMounted(() => {
       return
     }
     const list = conversations.value[msg.sender_id]
-    if (list) {
+    if (list)
       list.push(msg)
-      if (f.value?.id === msg.sender_id)
-        scrollChatToBottom()
+    if (f.value?.id === msg.sender_id) {
+      // Conversation is open on screen — treat the new message as read.
+      scrollChatToBottom()
+      markRead(msg.sender_id)
+    }
+    else {
+      // Arrived for a conversation that isn't open — bump the sidebar badge.
+      refreshUnread()
     }
   }
 })
