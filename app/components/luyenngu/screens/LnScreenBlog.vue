@@ -6,14 +6,46 @@ import type { BlogPost, Comment, Paginated } from '~/types/api'
 
 const ctx = useLnCtx()
 const { me } = useMe()
+const toast = useToast()
 const open = ref<number | null>(null)
 const cats = ['Tất cả', 'IELTS', 'TOEIC', 'Phương pháp', 'Câu chuyện']
+const activeCat = ref('Tất cả')
+
+// --- Viết bài: any logged-in user can submit a post; it goes to admin
+// moderation (status forced to "review" server-side) before it's public. ---
+const writeOpen = ref(false)
+const writeForm = reactive({ title: '', category: '', excerpt: '', body: '' })
+const writeSaving = ref(false)
+const writeError = ref('')
+function openWrite() {
+  Object.assign(writeForm, { title: '', category: '', excerpt: '', body: '' })
+  writeError.value = ''
+  writeOpen.value = true
+}
+async function submitPost() {
+  writeSaving.value = true
+  writeError.value = ''
+  try {
+    await $fetch('/api/blog', { method: 'POST', body: { ...writeForm } })
+    writeOpen.value = false
+    toast.ok('Đã gửi bài viết — admin sẽ duyệt trước khi hiển thị công khai.')
+  }
+  catch (e) {
+    const err = e as { data?: { statusMessage?: string }, statusMessage?: string }
+    writeError.value = err.data?.statusMessage ?? err.statusMessage ?? 'Gửi bài thất bại. Vui lòng thử lại.'
+  }
+  finally {
+    writeSaving.value = false
+  }
+}
 
 const page = ref(1)
 const { data: res } = await useFetch<Paginated<BlogPost>>('/api/blog', {
-  query: { page, limit: 9 },
+  query: { page, limit: 9, category: computed(() => activeCat.value === 'Tất cả' ? undefined : activeCat.value) },
   default: () => ({ data: [], meta: { page: 1, limit: 9, total: 0, total_pages: 0 } }),
+  watch: [page, activeCat],
 })
+watch(activeCat, () => { page.value = 1 })
 const posts = computed(() => res.value.data)
 const totalPages = computed(() => res.value.meta.total_pages)
 watch(page, () => { open.value = null })
@@ -32,7 +64,6 @@ function fmtReads(n: number) {
 const comments = ref<Comment[]>([])
 const commentBody = ref('')
 const sending = ref(false)
-const toast = useToast()
 
 const commentPalette = ['son', 'reu', 'gold', 'ink'] as const
 
@@ -69,7 +100,6 @@ async function sendComment() {
     <div class="flex items-center gap-3 py-[11px]">
       <LnAvatar :name="post.author" color="son" :size="40" />
       <div class="flex-1"><div class="font-body text-base font-semibold">{{ post.author }}</div><div class="text-xs text-ink-3 mt-px">{{ fmtDate(post.created_at) }} · {{ fmtReads(post.reads) }} lượt đọc</div></div>
-      <LnBtn variant="outline" size="sm" icon="user-plus">Theo dõi</LnBtn>
     </div>
     <div class="h-[200px] rounded-xl-ln bg-son-soft grid place-items-center my-4"><LnIcon name="lightbulb" :size="44" class="text-son" /></div>
     <div class="font-body text-[1.0625rem] text-ink-2 leading-[1.75]" v-html="postBodyHtml" />
@@ -108,13 +138,16 @@ async function sendComment() {
     <div class="flex items-center justify-between gap-3">
       <div class="flex flex-wrap gap-2">
         <span
-          v-for="(c, i) in cats"
+          v-for="c in cats"
           :key="c"
-          :class="cn('font-body text-[0.8125rem] rounded-full px-3.5 py-[7px] border cursor-pointer', i === 0 ? 'bg-son-soft border-son-line text-son-deep font-bold' : 'border-line-strong bg-paper-0 text-ink-2')"
+          :class="cn('font-body text-[0.8125rem] rounded-full px-3.5 py-[7px] border cursor-pointer', c === activeCat ? 'bg-son-soft border-son-line text-son-deep font-bold' : 'border-line-strong bg-paper-0 text-ink-2')"
+          @click="activeCat = c"
         >{{ c }}</span>
       </div>
-      <LnBtn variant="outline" icon="pen-line">Viết bài</LnBtn>
+      <LnBtn variant="outline" icon="pen-line" @click="openWrite">Viết bài</LnBtn>
     </div>
+
+    <p v-if="!posts.length" class="text-ink-3 font-body text-[0.9375rem] text-center py-10">Chưa có bài viết nào trong mục này.</p>
 
     <div v-if="posts[0]" class="relative overflow-hidden bg-ink text-white rounded-xl-ln p-8 cursor-pointer before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(120%_130%_at_100%_0%,rgba(220,74,51,.36),transparent_55%)]" @click="open = 0">
       <div class="relative">
@@ -152,4 +185,21 @@ async function sendComment() {
       <LnPager v-model:page="page" :total-pages="totalPages" />
     </div>
   </div>
+
+  <!-- write post dialog -->
+  <LnDialog :open="writeOpen" :width="640" @close="writeOpen = false">
+    <div class="flex items-center justify-between mb-1.5"><b class="font-display text-[1.3125rem] font-bold">Viết bài</b><LnIconBtn @click="writeOpen = false"><LnIcon name="x" :size="20" /></LnIconBtn></div>
+    <p class="text-ink-3 font-body text-[0.9375rem] mb-4">Bài viết của bạn sẽ được admin duyệt trước khi hiển thị công khai.</p>
+    <div class="flex flex-col gap-3.5">
+      <LnField v-model="writeForm.title" label="Tiêu đề" placeholder="Tiêu đề bài viết" />
+      <LnField v-model="writeForm.category" label="Chuyên mục" placeholder="VD: IELTS Speaking" />
+      <div>
+        <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Mô tả ngắn</label>
+        <textarea v-model="writeForm.excerpt" rows="2" placeholder="Mô tả ngắn hiển thị ở danh sách" class="w-full mt-2 px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] text-ink placeholder:text-ink-4 focus:outline-none focus:border-son resize-y" />
+      </div>
+      <LnRichEditor v-model="writeForm.body" label="Nội dung" placeholder="Nội dung bài viết…" />
+      <p v-if="writeError" class="text-error font-body text-[0.8125rem]">{{ writeError }}</p>
+      <LnBtn variant="primary" class="w-full" :disabled="writeSaving || !writeForm.title.trim() || !writeForm.category.trim()" @click="submitPost">{{ writeSaving ? 'Đang gửi…' : 'Gửi bài để duyệt' }}</LnBtn>
+    </div>
+  </LnDialog>
 </template>

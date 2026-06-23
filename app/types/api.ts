@@ -10,6 +10,7 @@ export interface Profile {
   elo: number
   rank: string
   streak: number
+  wins: number
   role: 'user' | 'mod' | 'admin'
   joined: string
 }

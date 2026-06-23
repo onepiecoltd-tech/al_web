@@ -2,9 +2,37 @@
 import { cn } from '~/lib/utils'
 import type { Badge, CoinPack, Transaction } from '~/types/api'
 
-const { me } = useMe()
+const { me, refresh: refreshMe } = useMe()
 const { coins, topup: doTopup } = useWallet()
 const topup = ref(false)
+const toast = useToast()
+
+// --- Sửa hồ sơ ---
+const editOpen = ref(false)
+const editName = ref('')
+const editSaving = ref(false)
+function openEdit() {
+  editName.value = me.value?.name ?? ''
+  editOpen.value = true
+}
+async function saveEdit() {
+  const name = editName.value.trim()
+  if (!name)
+    return
+  editSaving.value = true
+  try {
+    await $fetch('/api/me', { method: 'PUT', body: { name } })
+    await refreshMe()
+    editOpen.value = false
+    toast.ok('Đã cập nhật hồ sơ.')
+  }
+  catch {
+    toast.err('Cập nhật hồ sơ thất bại.')
+  }
+  finally {
+    editSaving.value = false
+  }
+}
 
 const { data: packs } = await useFetch<CoinPack[]>('/api/coin-packs', { default: () => [] })
 const { data: txns, refresh: refreshTxns } = await useFetch<Transaction[]>('/api/wallet/transactions', { default: () => [] })
@@ -14,7 +42,6 @@ function fmtTxnTime(iso: string) {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} · ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-const toast = useToast()
 const buying = ref(false)
 async function buy(packId: string) {
   buying.value = true
@@ -71,14 +98,13 @@ const badgeBg: Record<string, string> = { son: 'bg-son-soft', gold: 'bg-gold-sof
           <span class="flex items-center gap-1.5 font-body text-[0.8125rem] font-semibold whitespace-nowrap"><LnIcon name="trophy" :size="16" class="text-gold-deep" />ELO {{ me?.elo }} · Hạng {{ me?.rank }}</span>
         </div>
       </div>
-      <LnBtn variant="outline" icon="pen-line">Sửa hồ sơ</LnBtn>
+      <LnBtn variant="outline" icon="pen-line" @click="openEdit">Sửa hồ sơ</LnBtn>
     </LnCard>
 
     <!-- stats -->
-    <div class="grid grid-cols-4 gap-3 max-[1040px]:grid-cols-2 max-[720px]:grid-cols-1">
-      <LnStat icon="swords" k="Trận thắng" v="41" />
-      <LnStat icon="target" k="Tỉ lệ thắng" v="64%" />
-      <LnStat icon="book-open" k="Lượt luyện" v="312" />
+    <div class="grid grid-cols-3 gap-3 max-[1040px]:grid-cols-2 max-[720px]:grid-cols-1">
+      <LnStat icon="swords" k="Trận thắng" :v="me?.wins ?? 0" />
+      <LnStat icon="trophy" k="ELO" :v="me?.elo ?? 0" />
       <LnStat icon="award" k="Huy hiệu" :v="badges.length" />
     </div>
 
@@ -121,14 +147,13 @@ const badgeBg: Record<string, string> = { son: 'bg-son-soft', gold: 'bg-gold-sof
 
       <!-- pro + settings -->
       <div class="flex flex-col gap-4">
-        <LnCard pop class="!border-gold-line">
-          <div class="flex items-center justify-between"><b class="font-body text-base font-bold">Gói Pro</b><LnBadge tone="gold" status>Đang hoạt động</LnBadge></div>
-          <div class="font-body text-[0.9375rem] text-ink-2 my-2.5">Gia hạn vào <b>01/07/2026</b> · ₫50.000/tháng</div>
-          <LnProgress :value="62" tone="gold" />
-          <div class="flex gap-2.5 mt-3.5">
-            <LnBtn variant="outline" size="sm" class="flex-1">Quản lý gói</LnBtn>
-            <LnBtn variant="ghost" size="sm" class="flex-1">Lịch sử thanh toán</LnBtn>
+        <LnCard pop :class="me?.plan === 'pro' ? '!border-gold-line' : ''">
+          <div class="flex items-center justify-between">
+            <b class="font-body text-base font-bold">Gói {{ me?.plan === 'pro' ? 'Pro' : 'Free' }}</b>
+            <LnBadge :tone="me?.plan === 'pro' ? 'gold' : 'reu'" status>{{ me?.plan === 'pro' ? 'Đang hoạt động' : 'Miễn phí' }}</LnBadge>
           </div>
+          <p v-if="me?.plan === 'pro'" class="font-body text-[0.9375rem] text-ink-2 my-2.5">Bạn đang dùng các tính năng Pro.</p>
+          <p v-else class="font-body text-[0.9375rem] text-ink-2 my-2.5">Liên hệ hỗ trợ để nâng cấp lên Pro.</p>
         </LnCard>
         <LnCard>
           <b class="font-body text-base font-bold">Cài đặt</b>
@@ -161,6 +186,20 @@ const badgeBg: Record<string, string> = { son: 'bg-son-soft', gold: 'bg-gold-sof
           <LnIcon name="chevron-right" :size="18" class="text-ink-3" />
         </button>
       </div>
+    </LnDialog>
+
+    <!-- edit profile dialog -->
+    <LnDialog :open="editOpen" @close="editOpen = false">
+      <div class="flex items-center justify-between mb-1.5"><b class="font-display text-[1.3125rem] font-bold">Sửa hồ sơ</b><LnIconBtn @click="editOpen = false"><LnIcon name="x" :size="20" /></LnIconBtn></div>
+      <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Tên hiển thị</label>
+      <input
+        v-model="editName"
+        :disabled="editSaving"
+        class="w-full mt-2 mb-4 bg-paper-2 border border-line rounded-md-ln px-3.5 py-2.5 font-body text-[0.9375rem] text-ink focus:outline-none focus:border-son disabled:opacity-60"
+        placeholder="Tên hiển thị"
+        @keyup.enter="saveEdit"
+      >
+      <LnBtn variant="primary" class="w-full" :disabled="editSaving || !editName.trim()" @click="saveEdit">{{ editSaving ? 'Đang lưu…' : 'Lưu' }}</LnBtn>
     </LnDialog>
   </div>
 </template>
