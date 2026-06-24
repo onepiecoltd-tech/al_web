@@ -22,7 +22,7 @@ function fmtDate(iso: string) {
 
 // create (upload card)
 const drop = ref(false)
-const form = reactive({ name: '', type: 'IELTS', questions: 0 })
+const form = reactive({ name: '', type: 'IELTS' })
 const toast = useToast()
 const confirm = useConfirm()
 const creating = ref(false)
@@ -89,7 +89,7 @@ async function create() {
     else {
       toast.ok(`Đã tạo đề "${form.name}".`)
     }
-    Object.assign(form, { name: '', type: 'IELTS', questions: 0 })
+    Object.assign(form, { name: '', type: 'IELTS' })
     examFile.value = undefined
     await refresh()
   }
@@ -101,7 +101,7 @@ async function create() {
       const imported = exams.value.find(x => x.name === form.name)?.questions
       if (imported) {
         toast.ok(`Đã tạo đề "${form.name}" và AI nhập được ${imported} câu hỏi.`)
-        Object.assign(form, { name: '', type: 'IELTS', questions: 0 })
+        Object.assign(form, { name: '', type: 'IELTS' })
         examFile.value = undefined
         return
       }
@@ -246,10 +246,6 @@ async function saveEdit() {
           <select v-model="form.type" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] text-ink focus:outline-none focus:border-son">
             <option v-for="t in examTypes" :key="t" :value="t">{{ t }}</option>
           </select>
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Số câu</label>
-          <input v-model.number="form.questions" type="number" min="0" placeholder="0" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] text-ink focus:outline-none focus:border-son">
         </div>
         <LnBtn variant="primary" icon="plus" class="w-full" :disabled="creating" @click="create">
           {{ creating ? 'Đang tạo…' : 'Tạo đề (nháp)' }}
