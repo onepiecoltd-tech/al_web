@@ -64,7 +64,7 @@ export interface AdminExam {
   language: string
   questions: number
   author: string
-  state: 'published' | 'review' | 'draft'
+  state: 'published' | 'review' | 'draft' | 'processing' | 'failed'
   created_at: string
 }
 

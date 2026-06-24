@@ -35,6 +35,50 @@ const { data: mineRes, refresh: refreshMine } = await useFetch<Paginated<AdminEx
 })
 const myExams = computed(() => mineRes.value.data)
 
+// Đề mới tải lên ở trạng thái 'processing' cho tới khi AI trích xong câu hỏi
+// (chạy nền ở backend). Theo dõi các đề đang xử lý để báo khi xong và poll lại.
+const processingIds = ref(new Set<string>())
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+function syncProcessing() {
+  const now = new Set(myExams.value.filter(e => e.state === 'processing').map(e => e.id))
+  for (const id of processingIds.value) {
+    if (now.has(id))
+      continue
+    const e = myExams.value.find(x => x.id === id)
+    if (e?.state === 'published')
+      toast.ok(`Đã trích ${e.questions} câu hỏi cho “${e.name}”.`)
+    else if (e?.state === 'failed')
+      toast.err(`Không trích được câu hỏi cho “${e.name}”. Hãy thử tải lại.`)
+  }
+  processingIds.value = now
+}
+
+function startProcessingPoll() {
+  if (pollTimer)
+    return
+  let elapsed = 0
+  pollTimer = setInterval(async () => {
+    await refreshMine()
+    elapsed += 3000
+    if (!myExams.value.some(e => e.state === 'processing') || elapsed > 5 * 60 * 1000) {
+      clearInterval(pollTimer!)
+      pollTimer = null
+    }
+  }, 3000)
+}
+
+watch(myExams, () => {
+  syncProcessing()
+  if (myExams.value.some(e => e.state === 'processing'))
+    startProcessingPoll()
+}, { immediate: true })
+
+onBeforeUnmount(() => {
+  if (pollTimer)
+    clearInterval(pollTimer)
+})
+
 const fileInput = ref<HTMLInputElement>()
 const drop = ref(false)
 const uploading = ref(false)
@@ -83,9 +127,9 @@ function pickAndUpload(f?: File | null) {
     uploadPct.value = null
     aiBusy.value = false
     if (xhr.status >= 200 && xhr.status < 300) {
-      const res = JSON.parse(xhr.responseText)
-      toast.ok(`Đã tải lên — AI trích được ${res.imported} câu hỏi.`)
+      toast.ok('Đã tải lên. AI đang trích câu hỏi — đề sẽ sẵn sàng trong giây lát.')
       await refreshMine()
+      startProcessingPoll()
     }
     else {
       toast.err(JSON.parse(xhr.responseText)?.message ?? 'Tải lên thất bại.')
@@ -316,7 +360,7 @@ const { data: bankRes } = await useFetch<Paginated<AdminExam>>('/api/exams/bank'
   default: () => ({ data: [], meta: { page: 1, limit: 50, total: 0, total_pages: 0 } }),
 })
 const bankExams = computed(() => bankRes.value.data)
-const pickableExams = computed(() => src.value === 'bank' ? bankExams.value : myExams.value)
+const pickableExams = computed(() => src.value === 'bank' ? bankExams.value : myExams.value.filter(e => e.state === 'published'))
 const picked = ref<string | null>(null)
 const count = ref(10)
 const quizQuestions = ref<Question[]>([])
@@ -437,7 +481,9 @@ function restartQuiz() {
         >
           <div class="grid place-items-center w-11 h-11 rounded-md-ln flex-none font-body font-extrabold text-[0.8rem]" :class="sourceIconBg[iconTone[fileExt(e.name)] ?? 'reu']">{{ iconTone[fileExt(e.name)] ? fileExt(e.name) : 'ĐỀ' }}</div>
           <div class="flex-1 min-w-0"><div class="font-body text-base font-bold truncate">{{ e.name }}</div><div class="text-xs text-ink-3 mt-0.5">{{ languageLabel(e.language) }} · {{ e.questions }} câu · {{ fmtWhen(e.created_at) }}</div></div>
-          <LnBadge tone="success">Sẵn sàng</LnBadge>
+          <LnBadge v-if="e.state === 'processing'" tone="info">Đang trích…</LnBadge>
+          <LnBadge v-else-if="e.state === 'failed'" tone="error">Thất bại</LnBadge>
+          <LnBadge v-else tone="success">Sẵn sàng</LnBadge>
         </div>
       </div>
     </div>
