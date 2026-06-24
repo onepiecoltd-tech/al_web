@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
+import { LANGUAGES, languageLabel } from '~/lib/languages'
 import type { AdminExam, Paginated, Question } from '~/types/api'
 
 const VALID_TABS = ['nguon', 'giai', 'lam']
@@ -11,9 +12,25 @@ watch(tab, (v) => {
 })
 const toast = useToast()
 
+// --- Ngôn ngữ đang học: lọc danh sách đề và gắn cho đề mới tải lên. ---
+// Mặc định theo hồ sơ; đổi lựa chọn sẽ lưu lại làm sở thích của người dùng.
+const { me } = useMe()
+const lang = ref(me.value?.learning_language ?? 'en')
+let userPicked = false
+// Adopt the profile's language once it loads, unless the user already chose one.
+watch(me, (m) => {
+  if (!userPicked && m?.learning_language)
+    lang.value = m.learning_language
+})
+async function changeLang(code: string) {
+  userPicked = true
+  lang.value = code
+  await $fetch('/api/me/language', { method: 'PUT', body: { language: code } }).catch(() => {})
+}
+
 // --- Nguồn đề: đề người dùng tự tải lên ---
 const { data: mineRes, refresh: refreshMine } = await useFetch<Paginated<AdminExam>>('/api/exams/mine', {
-  query: { limit: 50 },
+  query: { limit: 50, lang },
   default: () => ({ data: [], meta: { page: 1, limit: 50, total: 0, total_pages: 0 } }),
 })
 const myExams = computed(() => mineRes.value.data)
@@ -53,6 +70,7 @@ function pickAndUpload(f?: File | null) {
   aiBusy.value = false
   const fd = new FormData()
   fd.append('file', f)
+  fd.append('language', lang.value)
   const xhr = new XMLHttpRequest()
   xhr.open('POST', '/api/exams/upload')
   xhr.upload.onprogress = (e) => {
@@ -294,7 +312,7 @@ const phase = ref<'setup' | 'quiz' | 'done'>('setup')
 const src = ref<'bank' | 'source'>('source')
 const srcOptions: [string, string, string][] = [['source', 'Từ đề của bạn ✦', 'sparkles'], ['bank', 'Ngân hàng có sẵn', 'file-stack']]
 const { data: bankRes } = await useFetch<Paginated<AdminExam>>('/api/exams/bank', {
-  query: { limit: 50 },
+  query: { limit: 50, lang },
   default: () => ({ data: [], meta: { page: 1, limit: 50, total: 0, total_pages: 0 } }),
 })
 const bankExams = computed(() => bankRes.value.data)
@@ -373,6 +391,16 @@ function restartQuiz() {
     <!-- ============ NGUỒN ĐỀ ============ -->
     <div v-if="tab === 'nguon'" class="grid grid-cols-[1.6fr_1fr] gap-4 items-start max-[1040px]:grid-cols-1">
       <div>
+        <label class="flex items-center gap-2 mb-3 font-body text-sm">
+          <span class="text-ink-3">Ngôn ngữ đang học:</span>
+          <select
+            :value="lang"
+            class="border border-line rounded-md-ln bg-paper-0 px-2.5 py-1.5 font-body text-sm"
+            @change="changeLang(($event.target as HTMLSelectElement).value)"
+          >
+            <option v-for="l in LANGUAGES" :key="l.code" :value="l.code">{{ l.label }}</option>
+          </select>
+        </label>
         <div
           :class="cn(
             'border-[1.5px] border-dashed rounded-lg-ln text-center p-10 transition-colors',
@@ -408,7 +436,7 @@ function restartQuiz() {
           @click="openDetail(e.id)"
         >
           <div class="grid place-items-center w-11 h-11 rounded-md-ln flex-none font-body font-extrabold text-[0.8rem]" :class="sourceIconBg[iconTone[fileExt(e.name)] ?? 'reu']">{{ iconTone[fileExt(e.name)] ? fileExt(e.name) : 'ĐỀ' }}</div>
-          <div class="flex-1 min-w-0"><div class="font-body text-base font-bold truncate">{{ e.name }}</div><div class="text-xs text-ink-3 mt-0.5">{{ e.questions }} câu · {{ fmtWhen(e.created_at) }}</div></div>
+          <div class="flex-1 min-w-0"><div class="font-body text-base font-bold truncate">{{ e.name }}</div><div class="text-xs text-ink-3 mt-0.5">{{ languageLabel(e.language) }} · {{ e.questions }} câu · {{ fmtWhen(e.created_at) }}</div></div>
           <LnBadge tone="success">Sẵn sàng</LnBadge>
         </div>
       </div>

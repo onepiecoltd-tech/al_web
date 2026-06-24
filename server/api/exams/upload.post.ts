@@ -11,6 +11,9 @@ export default defineEventHandler(async (event) => {
   const name = parts?.find(p => p.name === 'name')?.data.toString()
   if (name)
     fd.append('name', name)
+  const language = parts?.find(p => p.name === 'language')?.data.toString()
+  if (language)
+    fd.append('language', language)
 
   return backend<{ data: { exam: unknown, imported: number } }>(
     event,

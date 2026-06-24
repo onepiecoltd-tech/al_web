@@ -13,6 +13,7 @@ export interface Profile {
   wins: number
   role: 'user' | 'mod' | 'admin'
   joined: string
+  learning_language: string
 }
 
 export interface PageMeta {
@@ -60,6 +61,7 @@ export interface AdminExam {
   id: string
   name: string
   type: string
+  language: string
   questions: number
   author: string
   state: 'published' | 'review' | 'draft'
