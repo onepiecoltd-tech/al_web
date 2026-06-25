@@ -11,8 +11,8 @@ const { data: res, refresh } = await useFetch<Paginated<AdminExam>>('/api/admin/
 const exams = computed(() => res.value.data)
 const totalPages = computed(() => res.value.meta.total_pages)
 
-const stateClass: Record<string, string> = { published: 'ok', review: 'warn', draft: 'mut' }
-const stateLabel: Record<string, string> = { published: 'Đã đăng', review: 'Chờ duyệt', draft: 'Nháp' }
+const stateClass: Record<string, string> = { published: 'ok', review: 'warn', draft: 'mut', processing: 'warn', failed: 'err' }
+const stateLabel: Record<string, string> = { published: 'Đã đăng', review: 'Chờ duyệt', draft: 'Nháp', processing: 'Đang xử lý', failed: 'Thất bại' }
 const examTypes = ['IELTS', 'TOEIC', 'TOEFL', 'Từ vựng']
 
 function fmtDate(iso: string) {
@@ -25,6 +25,50 @@ const drop = ref(false)
 const form = reactive({ name: '', type: 'IELTS' })
 const toast = useToast()
 const confirm = useConfirm()
+
+// Đề đang nhập câu hỏi bằng AI (chạy nền) ở trạng thái 'processing'. Theo dõi để
+// báo khi xong/thất bại và làm mới danh sách.
+const processingIds = ref(new Set<string>())
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+function syncProcessing() {
+  const now = new Set(exams.value.filter(e => e.state === 'processing').map(e => e.id))
+  for (const id of processingIds.value) {
+    if (now.has(id))
+      continue
+    const e = exams.value.find(x => x.id === id)
+    if (e?.state === 'failed')
+      toast.err(`Nhập câu hỏi thất bại cho đề “${e.name}”. Hãy thử nhập lại tệp.`)
+    else if (e)
+      toast.ok(`Đã nhập ${e.questions} câu hỏi cho đề “${e.name}”.`)
+  }
+  processingIds.value = now
+}
+
+function startProcessingPoll() {
+  if (pollTimer)
+    return
+  let elapsed = 0
+  pollTimer = setInterval(async () => {
+    await refresh()
+    elapsed += 3000
+    if (!exams.value.some(e => e.state === 'processing') || elapsed > 5 * 60 * 1000) {
+      clearInterval(pollTimer!)
+      pollTimer = null
+    }
+  }, 3000)
+}
+
+watch(exams, () => {
+  syncProcessing()
+  if (exams.value.some(e => e.state === 'processing'))
+    startProcessingPoll()
+}, { immediate: true })
+
+onBeforeUnmount(() => {
+  if (pollTimer)
+    clearInterval(pollTimer)
+})
 const creating = ref(false)
 const fileInput = ref<HTMLInputElement>()
 const examFile = ref<File>()
@@ -50,7 +94,7 @@ const importProgress = ref<number>()
 // true once the upload finished and the server is busy extracting via AI (no progress signal for this part)
 const aiProcessing = ref(false)
 function importFile(examId: string, file: File) {
-  return new Promise<{ imported: number }>((resolve, reject) => {
+  return new Promise<{ processing: boolean }>((resolve, reject) => {
     const fd = new FormData()
     fd.append('file', file)
     const xhr = new XMLHttpRequest()
@@ -79,12 +123,13 @@ async function create() {
   if (!form.name.trim())
     return
   creating.value = true
+  const hadFile = !!examFile.value
   try {
     const exam = await $fetch<AdminExam>('/api/admin/exams', { method: 'POST', body: { ...form } })
     if (examFile.value) {
       importProgress.value = 0
-      const res = await importFile(exam.id, examFile.value)
-      toast.ok(`Đã tạo đề "${form.name}" và AI nhập được ${res.imported} câu hỏi.`)
+      await importFile(exam.id, examFile.value)
+      toast.ok(`Đã tạo đề "${form.name}". AI đang nhập câu hỏi ở chế độ nền — đề sẽ sẵn sàng trong giây lát.`)
     }
     else {
       toast.ok(`Đã tạo đề "${form.name}".`)
@@ -92,20 +137,10 @@ async function create() {
     Object.assign(form, { name: '', type: 'IELTS' })
     examFile.value = undefined
     await refresh()
+    if (hadFile)
+      startProcessingPoll()
   }
   catch (e) {
-    // The import call may have errored client-side (e.g. proxy/timeout) while the
-    // AI extraction still finished on the server — re-check before reporting failure.
-    if (examFile.value) {
-      await refresh()
-      const imported = exams.value.find(x => x.name === form.name)?.questions
-      if (imported) {
-        toast.ok(`Đã tạo đề "${form.name}" và AI nhập được ${imported} câu hỏi.`)
-        Object.assign(form, { name: '', type: 'IELTS' })
-        examFile.value = undefined
-        return
-      }
-    }
     toast.err((e as Error).message ?? 'Tạo đề thất bại.')
   }
   finally {
@@ -193,7 +228,7 @@ async function saveEdit() {
             </td>
             <td class="px-4 py-3 border-b border-line-soft align-middle">
               <div class="flex gap-1 justify-end items-center">
-                <LnBtn v-if="e.state !== 'published'" variant="secondary" size="sm" @click="update(e, { state: 'published' })">{{ e.state === 'review' ? 'Duyệt' : 'Đăng' }}</LnBtn>
+                <LnBtn v-if="e.state === 'review' || e.state === 'draft'" variant="secondary" size="sm" @click="update(e, { state: 'published' })">{{ e.state === 'review' ? 'Duyệt' : 'Đăng' }}</LnBtn>
                 <LnIconBtn :size="32" title="Xem chi tiết" @click="navigateTo(localePath(`/admin/de-thi/${e.id}`))"><LnIcon name="eye" :size="15" /></LnIconBtn>
                 <LnIconBtn :size="32" title="Sửa" @click="openEdit(e)"><LnIcon name="pen-line" :size="15" /></LnIconBtn>
                 <LnIconBtn :size="32" title="Xóa" @click="remove(e)"><LnIcon name="trash-2" :size="15" class="text-error capitalize" /></LnIconBtn>
@@ -235,7 +270,7 @@ async function saveEdit() {
           />
         </div>
         <div class="text-xs text-ink-3 mt-1">
-          {{ aiProcessing ? 'Đang xử lý bằng AI… có thể mất 1-2 phút, vui lòng đợi' : `Đang tải lên… ${importProgress}%` }}
+          {{ aiProcessing ? 'Đang gửi tệp lên máy chủ…' : `Đang tải lên… ${importProgress}%` }}
         </div>
       </div>
 
