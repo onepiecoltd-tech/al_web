@@ -61,7 +61,7 @@ function startProcessingPoll() {
   pollTimer = setInterval(async () => {
     await refreshMine()
     elapsed += 3000
-    if (!myExams.value.some(e => e.state === 'processing') || elapsed > 5 * 60 * 1000) {
+    if (!myExams.value.some(e => e.state === 'processing') || elapsed > 10 * 60 * 1000) {
       clearInterval(pollTimer!)
       pollTimer = null
     }
