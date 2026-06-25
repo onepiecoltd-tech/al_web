@@ -28,7 +28,7 @@ const confirm = useConfirm()
 const creating = ref(false)
 const fileInput = ref<HTMLInputElement>()
 const examFile = ref<File>()
-const MAX_FILE_SIZE = 5 * 1024 * 1024
+const MAX_FILE_SIZE = 50 * 1024 * 1024
 function pickFile(f?: File | null) {
   if (!f)
     return
@@ -37,7 +37,7 @@ function pickFile(f?: File | null) {
     return
   }
   if (f.size > MAX_FILE_SIZE) {
-    toast.err('Tệp vượt quá giới hạn 5MB.')
+    toast.err('Tệp vượt quá giới hạn 50MB.')
     return
   }
   examFile.value = f
@@ -225,7 +225,7 @@ async function saveEdit() {
         <LnIcon name="upload-cloud" :size="30" class="text-ink-4 mx-auto mb-2.5" />
         <div class="font-body text-[0.9375rem]">Kéo-thả hoặc <b class="text-son">chọn tệp</b></div>
         <div v-if="examFile" class="text-son text-xs mt-1.5 font-semibold">{{ examFile.name }}</div>
-        <div v-else class="text-ink-3 text-xs mt-1.5">Tệp đề thi (.pdf hoặc .txt, tối đa 5MB) — AI tự tách câu hỏi &amp; đáp án mẫu</div>
+        <div v-else class="text-ink-3 text-xs mt-1.5">Tệp đề thi (.pdf hoặc .txt, tối đa 50MB) — AI tự tách câu hỏi &amp; đáp án mẫu</div>
       </div>
       <div v-if="importProgress !== undefined" class="mt-2.5">
         <div class="h-1.5 rounded-full bg-paper-2 overflow-hidden">
