@@ -26,6 +26,25 @@ const form = reactive({ name: '', type: 'IELTS' })
 const toast = useToast()
 const confirm = useConfirm()
 
+// Manually kick off the AI answer-backfill job (otherwise runs hourly).
+const backfilling = ref(false)
+async function triggerBackfill() {
+  backfilling.value = true
+  try {
+    const res = await $fetch<{ started: boolean }>('/api/admin/questions/backfill-answers', { method: 'POST' })
+    if (res.started)
+      toast.ok('Đã kích hoạt tạo đáp án bằng AI — chạy nền, đáp án sẽ được điền dần.')
+    else
+      toast.ok('Job đang chạy rồi — vui lòng đợi.')
+  }
+  catch {
+    toast.err('Không kích hoạt được job.')
+  }
+  finally {
+    backfilling.value = false
+  }
+}
+
 // Đề đang nhập câu hỏi bằng AI (chạy nền) ở trạng thái 'processing'. Theo dõi để
 // báo khi xong/thất bại và làm mới danh sách.
 const processingIds = ref(new Set<string>())
@@ -198,6 +217,11 @@ async function saveEdit() {
   <div class="grid grid-cols-[1.6fr_1fr] gap-4 items-start max-[1040px]:grid-cols-1">
     <!-- exam table + pager -->
     <div class="flex flex-col gap-3">
+    <div class="flex justify-end">
+      <LnBtn variant="secondary" size="sm" icon="sparkles" :disabled="backfilling" @click="triggerBackfill">
+        {{ backfilling ? 'Đang tạo…' : 'Tạo đáp án còn thiếu (AI)' }}
+      </LnBtn>
+    </div>
     <div class="bg-paper-0 border border-line rounded-lg-ln overflow-hidden">
       <table class="w-full border-collapse">
         <thead>
