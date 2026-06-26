@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import LnScreenLuyenNoi from '~/components/luyenngu/screens/LnScreenLuyenNoi.vue'
-
-definePageMeta({ layout: 'luyenngu' })
-useSeoMeta({ title: 'Luyện nói — LuyệnNgữ' })
+// Merged into the unified practice page — redirect to the speaking skill.
+const localePath = useLocalePath()
+await navigateTo({ path: localePath('/luyen-de'), query: { skill: 'speaking' } }, { redirectCode: 301 })
 </script>
 
 <template>
-  <LnScreenLuyenNoi />
+  <div />
 </template>

@@ -74,6 +74,7 @@ export interface Question {
   position: number
   prompt: string
   sample_answer: string
+  type: string // skill: listening | reading | writing | speaking
   created_at: string
 }
 

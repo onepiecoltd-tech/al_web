@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
 import { LANGUAGES, languageLabel } from '~/lib/languages'
+import { skillLabel } from '~/lib/skills'
 import type { AdminExam, Paginated, Question } from '~/types/api'
+
+// When embedded under the skill chooser, `skill` is the exam-type label
+// (e.g. "Đọc") to filter lists by; empty means show all.
+const props = defineProps<{ skill?: string }>()
 
 const VALID_TABS = ['nguon', 'giai', 'lam']
 const route = useRoute()
@@ -33,7 +38,9 @@ const { data: mineRes, refresh: refreshMine } = await useFetch<Paginated<AdminEx
   query: { limit: 50, lang },
   default: () => ({ data: [], meta: { page: 1, limit: 50, total: 0, total_pages: 0 } }),
 })
-const myExams = computed(() => mineRes.value.data)
+// props.skill is the skill code ("reading"); exam.type stores the label ("Đọc").
+const skillLbl = computed(() => props.skill ? skillLabel(props.skill) : '')
+const myExams = computed(() => skillLbl.value ? mineRes.value.data.filter(e => e.type === skillLbl.value) : mineRes.value.data)
 
 // Đề mới tải lên ở trạng thái 'processing' cho tới khi AI trích xong câu hỏi
 // (chạy nền ở backend). Theo dõi các đề đang xử lý để báo khi xong và poll lại.
@@ -359,7 +366,7 @@ const { data: bankRes } = await useFetch<Paginated<AdminExam>>('/api/exams/bank'
   query: { limit: 50, lang },
   default: () => ({ data: [], meta: { page: 1, limit: 50, total: 0, total_pages: 0 } }),
 })
-const bankExams = computed(() => bankRes.value.data)
+const bankExams = computed(() => skillLbl.value ? bankRes.value.data.filter(e => e.type === skillLbl.value) : bankRes.value.data)
 const pickableExams = computed(() => src.value === 'bank' ? bankExams.value : myExams.value.filter(e => e.state === 'published'))
 const picked = ref<string | null>(null)
 const count = ref(10)
@@ -376,15 +383,25 @@ const quizScore = computed(() => quizGrades.value.filter(g => g === true).length
 watch(src, () => { picked.value = null })
 
 async function startQuiz() {
-  if (!picked.value)
-    return
   quizLoading.value = true
   try {
-    const url = src.value === 'bank' ? `/api/exams/bank/${picked.value}` : `/api/exams/${picked.value}`
-    const res = await $fetch<{ questions: Question[] }>(url)
-    quizQuestions.value = res.questions.slice(0, count.value)
+    // Skill mode (merged practice page): pool questions of this skill across all
+    // exams. Fallback: a specific picked exam.
+    if (props.skill) {
+      const res = await $fetch<{ questions: Question[] }>('/api/questions', {
+        query: { skill: props.skill, lang: lang.value, limit: count.value },
+      })
+      quizQuestions.value = res.questions
+    }
+    else {
+      if (!picked.value)
+        return
+      const url = src.value === 'bank' ? `/api/exams/bank/${picked.value}` : `/api/exams/${picked.value}`
+      const res = await $fetch<{ questions: Question[] }>(url)
+      quizQuestions.value = res.questions.slice(0, count.value)
+    }
     if (!quizQuestions.value.length) {
-      toast.err('Đề này chưa có câu hỏi nào.')
+      toast.err(props.skill ? 'Chưa có câu hỏi nào cho kỹ năng này.' : 'Đề này chưa có câu hỏi nào.')
       return
     }
     quizIdx.value = 0
@@ -603,35 +620,42 @@ function restartQuiz() {
         <LnCard pop>
           <b class="font-display text-[1.3125rem] font-bold">Tạo bài luyện</b>
           <p class="text-ink-3 font-body text-[0.9375rem] mt-1 mb-[18px]">Tự chấm: làm câu, xem đáp án mẫu rồi đánh giá đúng/sai cho bản thân.</p>
-          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Nguồn câu hỏi</label>
-          <div class="flex gap-4 mt-2 mb-5">
-            <button
-              v-for="[v, l, ic] in srcOptions"
-              :key="v"
-              type="button"
-              :class="cn('flex-1 cursor-pointer text-left border rounded-lg-ln p-4', src === v ? 'border-son bg-son-soft shadow-[0_0_0_3px_var(--son-soft)]' : 'border-line bg-paper-0')"
-              @click="src = v as 'bank' | 'source'"
-            >
-              <LnIcon :name="ic" :size="20" class="text-son" />
-              <div class="font-body text-base font-bold mt-2">{{ l }}</div>
-              <div class="text-xs text-ink-3 mt-px">{{ v === 'bank' ? `${bankExams.length} đề có sẵn` : 'Đề bạn đã tải lên' }}</div>
-            </button>
-          </div>
-          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">{{ src === 'bank' ? 'Chọn đề trong ngân hàng' : 'Chọn đề của bạn' }}</label>
-          <div v-if="pickableExams.length" class="flex flex-wrap gap-2 mt-2 mb-5">
-            <span
-              v-for="e in pickableExams"
-              :key="e.id"
-              :class="cn('font-body text-[0.8125rem] rounded-full px-3.5 py-[7px] border cursor-pointer', picked === e.id ? 'bg-son-soft border-son-line text-son-deep font-bold' : 'border-line-strong bg-paper-0 text-ink-2')"
-              @click="picked = e.id"
-            >{{ e.name }}</span>
-          </div>
-          <div v-else class="text-ink-3 text-xs mt-2 mb-5">{{ src === 'bank' ? 'Ngân hàng chưa có đề nào.' : 'Chưa có đề nào — tải lên ở tab “Nguồn đề” trước.' }}</div>
+
+          <!-- Skill mode: questions are pooled across all exams by skill. -->
+          <p v-if="skill" class="text-ink-2 font-body text-[0.9375rem] mb-5">Luyện câu hỏi kỹ năng <b>{{ skillLbl }}</b> gộp từ mọi đề (ngân hàng + đề của bạn).</p>
+
+          <template v-else>
+            <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Nguồn câu hỏi</label>
+            <div class="flex gap-4 mt-2 mb-5">
+              <button
+                v-for="[v, l, ic] in srcOptions"
+                :key="v"
+                type="button"
+                :class="cn('flex-1 cursor-pointer text-left border rounded-lg-ln p-4', src === v ? 'border-son bg-son-soft shadow-[0_0_0_3px_var(--son-soft)]' : 'border-line bg-paper-0')"
+                @click="src = v as 'bank' | 'source'"
+              >
+                <LnIcon :name="ic" :size="20" class="text-son" />
+                <div class="font-body text-base font-bold mt-2">{{ l }}</div>
+                <div class="text-xs text-ink-3 mt-px">{{ v === 'bank' ? `${bankExams.length} đề có sẵn` : 'Đề bạn đã tải lên' }}</div>
+              </button>
+            </div>
+            <label class="font-body text-[0.8125rem] font-semibold text-ink-2">{{ src === 'bank' ? 'Chọn đề trong ngân hàng' : 'Chọn đề của bạn' }}</label>
+            <div v-if="pickableExams.length" class="flex flex-wrap gap-2 mt-2 mb-5">
+              <span
+                v-for="e in pickableExams"
+                :key="e.id"
+                :class="cn('font-body text-[0.8125rem] rounded-full px-3.5 py-[7px] border cursor-pointer', picked === e.id ? 'bg-son-soft border-son-line text-son-deep font-bold' : 'border-line-strong bg-paper-0 text-ink-2')"
+                @click="picked = e.id"
+              >{{ e.name }}</span>
+            </div>
+            <div v-else class="text-ink-3 text-xs mt-2 mb-5">{{ src === 'bank' ? 'Ngân hàng chưa có đề nào.' : 'Chưa có đề nào — tải lên ở tab “Nguồn đề” trước.' }}</div>
+          </template>
+
           <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Số câu</label>
           <div class="flex items-center gap-3 mt-2 mb-6">
             <LnSegment v-model="count" :options="[{ v: 10, label: '10' }, { v: 20, label: '20' }, { v: 40, label: '40' }]" />
           </div>
-          <LnBtn variant="primary" size="lg" icon="play" class="w-full" :disabled="!picked || quizLoading" @click="startQuiz">{{ quizLoading ? 'Đang tải…' : 'Bắt đầu làm bài' }}</LnBtn>
+          <LnBtn variant="primary" size="lg" icon="play" class="w-full" :disabled="(!skill && !picked) || quizLoading" @click="startQuiz">{{ quizLoading ? 'Đang tải…' : 'Bắt đầu làm bài' }}</LnBtn>
         </LnCard>
       </div>
     </template>

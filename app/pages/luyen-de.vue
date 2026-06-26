@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import LnScreenLuyenDe from '~/components/luyenngu/screens/LnScreenLuyenDe.vue'
+import LnScreenLuyenTap from '~/components/luyenngu/screens/LnScreenLuyenTap.vue'
 
 definePageMeta({ layout: 'luyenngu' })
-useSeoMeta({ title: 'Luyện đề — LuyệnNgữ' })
+useSeoMeta({ title: 'Luyện tập — LuyệnNgữ' })
 </script>
 
 <template>
-  <LnScreenLuyenDe />
+  <LnScreenLuyenTap />
 </template>

@@ -6,8 +6,7 @@ import LnMessengerOverlay from '~/components/luyenngu/screens/LnMessengerOverlay
 
 const NAV_BASE = [
   { id: 'trang-chu', label: 'Trang chủ', icon: 'home' },
-  { id: 'luyen-de', label: 'Luyện đề', icon: 'file-text' },
-  { id: 'luyen-noi', label: 'Luyện nói', icon: 'mic' },
+  { id: 'luyen-de', label: 'Luyện tập', icon: 'file-text' },
   { id: 'hoc-nhom', label: 'Học nhóm', icon: 'users' },
   { id: 'thach-dau', label: 'Thách đấu', icon: 'swords' },
   { id: 'gap-go', label: 'Gặp gỡ', icon: 'shuffle' },
@@ -16,7 +15,7 @@ const NAV_BASE = [
   { id: 'ho-so', label: 'Hồ sơ', icon: 'user' },
 ]
 const TITLES: Record<string, string> = {
-  '/': 'Trang chủ', '/luyen-de': 'Luyện đề', '/luyen-noi': 'Luyện nói',
+  '/': 'Trang chủ', '/luyen-de': 'Luyện tập', '/luyen-noi': 'Luyện tập',
   '/hoc-nhom': 'Học nhóm', '/thach-dau': 'Thách đấu', '/gap-go': 'Gặp gỡ',
   '/ban-be': 'Bạn bè & Chat',
   '/blog': 'Blog', '/ho-so': 'Hồ sơ',

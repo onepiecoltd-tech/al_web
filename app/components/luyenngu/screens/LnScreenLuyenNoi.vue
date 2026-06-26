@@ -10,8 +10,9 @@ const DEFAULT_PROMPT = 'Describe a skill you want to learn.'
 const DEFAULT_CUES = ['what the skill is', 'how you would learn it', 'why you want to learn it', 'and how it would help you']
 
 // Speaking prompt can come from a random bank question (default), a
-// free-typed question, or one of the user's own uploaded "đề".
-const promptSrc = ref<'default' | 'custom' | 'exam'>('default')
+// free-typed question, one of the user's own uploaded "đề", or an exam from
+// the shared question bank ("ngân hàng đề").
+const promptSrc = ref<'default' | 'custom' | 'exam' | 'bank'>('default')
 const customPrompt = ref('')
 const randomQuestion = ref<Question | null>(null)
 const randomLoading = ref(false)
@@ -32,7 +33,14 @@ const { data: mineRes } = await useFetch<Paginated<AdminExam>>('/api/exams/mine'
   query: { limit: 50 },
   default: () => ({ data: [], meta: { page: 1, limit: 50, total: 0, total_pages: 0 } }),
 })
-const myExams = computed(() => mineRes.value.data)
+const { data: bankRes } = await useFetch<Paginated<AdminExam>>('/api/exams/bank', {
+  query: { limit: 50 },
+  default: () => ({ data: [], meta: { page: 1, limit: 50, total: 0, total_pages: 0 } }),
+})
+// Only speaking ("Nói") exams make sense as speaking prompts.
+const myExams = computed(() => mineRes.value.data.filter(e => e.type === 'Nói'))
+const bankExams = computed(() => bankRes.value.data.filter(e => e.type === 'Nói'))
+const examOptions = computed(() => promptSrc.value === 'bank' ? bankExams.value : myExams.value)
 const selectedExamId = ref<string | null>(null)
 const examQuestions = ref<Question[]>([])
 const selectedQuestionId = ref<string | null>(null)
@@ -45,7 +53,8 @@ watch(selectedExamId, async (id) => {
     return
   examQuestionsLoading.value = true
   try {
-    const res = await $fetch<{ questions: Question[] }>(`/api/exams/${id}`)
+    const url = promptSrc.value === 'bank' ? `/api/exams/bank/${id}` : `/api/exams/${id}`
+    const res = await $fetch<{ questions: Question[] }>(url)
     examQuestions.value = res.questions
     selectedQuestionId.value = res.questions[0]?.id ?? null
   }
@@ -57,10 +66,18 @@ watch(selectedExamId, async (id) => {
   }
 })
 
+// Switching between the "đề của bạn" and "ngân hàng" sources clears the
+// current pick so we don't fetch a bank exam id against the mine endpoint.
+watch(promptSrc, () => {
+  selectedExamId.value = null
+  examQuestions.value = []
+  selectedQuestionId.value = null
+})
+
 const cuePrompt = computed(() => {
   if (promptSrc.value === 'custom')
     return customPrompt.value.trim() || DEFAULT_PROMPT
-  if (promptSrc.value === 'exam') {
+  if (promptSrc.value === 'exam' || promptSrc.value === 'bank') {
     const q = examQuestions.value.find(q => q.id === selectedQuestionId.value)
     return q?.prompt || DEFAULT_PROMPT
   }
@@ -258,7 +275,7 @@ function speakSample() {
       <LnCard class="!p-4">
         <div class="flex items-center gap-2 flex-wrap">
           <span class="font-body text-[0.8125rem] font-semibold text-ink-2 mr-1">Đề bài:</span>
-          <LnSegment v-model="promptSrc" :options="[{ v: 'default', label: 'Mặc định' }, { v: 'custom', label: 'Tự nhập' }, { v: 'exam', label: 'Từ đề của bạn' }]" />
+          <LnSegment v-model="promptSrc" :options="[{ v: 'default', label: 'Mặc định' }, { v: 'custom', label: 'Tự nhập' }, { v: 'exam', label: 'Từ đề của bạn' }, { v: 'bank', label: 'Ngân hàng đề' }]" />
           <LnBtn v-if="promptSrc === 'default'" variant="ghost" size="sm" icon="shuffle" :disabled="randomLoading" @click="loadRandomQuestion">Câu khác</LnBtn>
         </div>
         <input
@@ -267,13 +284,13 @@ function speakSample() {
           class="w-full mt-3 bg-paper-2 border border-line rounded-md-ln px-3.5 py-2.5 font-body text-[0.9375rem] text-ink placeholder:text-ink-4 focus:outline-none focus:border-son"
           placeholder="Nhập câu hỏi luyện nói của riêng bạn…"
         >
-        <div v-else-if="promptSrc === 'exam'" class="mt-3 flex flex-col gap-2.5">
+        <div v-else-if="promptSrc === 'exam' || promptSrc === 'bank'" class="mt-3 flex flex-col gap-2.5">
           <select
             v-model="selectedExamId"
             class="px-3 py-[7px] rounded-md-ln bg-paper-2 border border-line font-body text-[0.875rem] text-ink focus:outline-none"
           >
-            <option :value="null" disabled>{{ myExams.length ? 'Chọn đề…' : 'Chưa có đề nào — tải lên ở Luyện đề trước' }}</option>
-            <option v-for="e in myExams" :key="e.id" :value="e.id">{{ e.name }}</option>
+            <option :value="null" disabled>{{ examOptions.length ? 'Chọn đề…' : (promptSrc === 'bank' ? 'Ngân hàng chưa có đề nói nào' : 'Chưa có đề nào — tải lên ở Luyện đề trước') }}</option>
+            <option v-for="e in examOptions" :key="e.id" :value="e.id">{{ e.name }}</option>
           </select>
           <select
             v-if="selectedExamId"
