@@ -13,7 +13,9 @@ const totalPages = computed(() => res.value.meta.total_pages)
 
 const stateClass: Record<string, string> = { published: 'ok', review: 'warn', draft: 'mut', processing: 'warn', failed: 'err' }
 const stateLabel: Record<string, string> = { published: 'Đã đăng', review: 'Chờ duyệt', draft: 'Nháp', processing: 'Đang xử lý', failed: 'Thất bại' }
-const examTypes = ['IELTS', 'TOEIC', 'TOEFL', 'Từ vựng']
+// The exam "type" is now the language skill, classified by AI on upload. This
+// list is only for manually correcting it in the edit dialog.
+const examTypes = ['Nghe', 'Đọc', 'Viết', 'Nói']
 
 function fmtDate(iso: string) {
   const d = new Date(iso)
@@ -22,7 +24,7 @@ function fmtDate(iso: string) {
 
 // create (upload card)
 const drop = ref(false)
-const form = reactive({ name: '', type: 'IELTS' })
+const form = reactive({ name: '' })
 const toast = useToast()
 const confirm = useConfirm()
 
@@ -153,7 +155,7 @@ async function create() {
     else {
       toast.ok(`Đã tạo đề "${form.name}".`)
     }
-    Object.assign(form, { name: '', type: 'IELTS' })
+    Object.assign(form, { name: '' })
     examFile.value = undefined
     await refresh()
     if (hadFile)
@@ -196,7 +198,7 @@ async function remove(e: AdminExam) {
 // edit dialog
 const editOpen = ref(false)
 const editing = ref<AdminExam | null>(null)
-const editForm = reactive({ name: '', type: 'IELTS', questions: 0, state: 'draft' as AdminExam['state'] })
+const editForm = reactive({ name: '', type: '', questions: 0, state: 'published' as AdminExam['state'] })
 function openEdit(e: AdminExam) {
   editing.value = e
   Object.assign(editForm, { name: e.name, type: e.type, questions: e.questions, state: e.state })
@@ -226,7 +228,7 @@ async function saveEdit() {
       <table class="w-full border-collapse">
         <thead>
           <tr>
-            <th v-for="h in ['Đề / bộ câu hỏi', 'Loại', 'Số câu', 'Người tạo', 'Trạng thái', '']" :key="h" class="text-left font-body font-bold text-[0.72rem] tracking-[0.04em] capitalize text-ink-3 px-4 py-3 bg-paper-2 border-b border-line whitespace-nowrap">
+            <th v-for="h in ['Đề / bộ câu hỏi', 'Kỹ năng', 'Số câu', 'Người tạo', 'Trạng thái', '']" :key="h" class="text-left font-body font-bold text-[0.72rem] tracking-[0.04em] capitalize text-ink-3 px-4 py-3 bg-paper-2 border-b border-line whitespace-nowrap">
               {{ h }}
             </th>
           </tr>
@@ -244,7 +246,7 @@ async function saveEdit() {
                 </div>
               </div>
             </td>
-            <td class="px-4 py-3 border-b border-line-soft align-middle"><LnBadge tone="reu">{{ e.type }}</LnBadge></td>
+            <td class="px-4 py-3 border-b border-line-soft align-middle"><LnBadge v-if="e.type" tone="reu">{{ e.type }}</LnBadge><span v-else class="text-ink-3 text-xs">—</span></td>
             <td class="px-4 py-3 border-b border-line-soft align-middle tabular-nums font-body text-[0.9375rem]">{{ e.questions }}</td>
             <td class="px-4 py-3 border-b border-line-soft align-middle text-ink-3 text-xs">{{ e.author }}</td>
             <td class="px-4 py-3 border-b border-line-soft align-middle">
@@ -300,14 +302,9 @@ async function saveEdit() {
 
       <div class="flex flex-col gap-3 mt-4">
         <LnField v-model="form.name" label="Tên đề" placeholder="VD: Cambridge IELTS 19 — Test 1" />
-        <div class="flex flex-col gap-1.5">
-          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Loại</label>
-          <select v-model="form.type" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] text-ink focus:outline-none focus:border-son">
-            <option v-for="t in examTypes" :key="t" :value="t">{{ t }}</option>
-          </select>
-        </div>
+        <div class="text-ink-3 text-xs">AI sẽ tự nhận diện kỹ năng (Nghe / Đọc / Viết / Nói) từ tệp tải lên.</div>
         <LnBtn variant="primary" icon="plus" class="w-full" :disabled="creating" @click="create">
-          {{ creating ? 'Đang tạo…' : 'Tạo đề (nháp)' }}
+          {{ creating ? 'Đang tạo…' : 'Tạo đề' }}
         </LnBtn>
       </div>
     </LnCard>
@@ -321,8 +318,9 @@ async function saveEdit() {
       <div class="flex flex-col gap-3.5">
         <LnField v-model="editForm.name" label="Tên đề" />
         <div class="flex flex-col gap-1.5">
-          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Loại</label>
+          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Kỹ năng</label>
           <select v-model="editForm.type" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] focus:outline-none focus:border-son">
+            <option value="">— chưa xác định —</option>
             <option v-for="t in examTypes" :key="t" :value="t">{{ t }}</option>
           </select>
         </div>
@@ -333,7 +331,6 @@ async function saveEdit() {
         <div class="flex flex-col gap-1.5">
           <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Trạng thái</label>
           <select v-model="editForm.state" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] focus:outline-none focus:border-son">
-            <option value="draft">Nháp</option>
             <option value="review">Chờ duyệt</option>
             <option value="published">Đã đăng</option>
           </select>

@@ -480,7 +480,7 @@ function restartQuiz() {
           @click="openDetail(e.id)"
         >
           <div class="grid place-items-center w-11 h-11 rounded-md-ln flex-none font-body font-extrabold text-[0.8rem]" :class="sourceIconBg[iconTone[fileExt(e.name)] ?? 'reu']">{{ iconTone[fileExt(e.name)] ? fileExt(e.name) : 'ĐỀ' }}</div>
-          <div class="flex-1 min-w-0"><div class="font-body text-base font-bold truncate">{{ e.name }}</div><div class="text-xs text-ink-3 mt-0.5">{{ languageLabel(e.language) }} · {{ e.questions }} câu · {{ fmtWhen(e.created_at) }}</div></div>
+          <div class="flex-1 min-w-0"><div class="font-body text-base font-bold truncate">{{ e.name }}</div><div class="text-xs text-ink-3 mt-0.5">{{ e.type ? `${e.type} · ` : '' }}{{ languageLabel(e.language) }} · {{ e.questions }} câu · {{ fmtWhen(e.created_at) }}</div></div>
           <LnBadge v-if="e.state === 'processing'" tone="info">Đang trích…</LnBadge>
           <LnBadge v-else-if="e.state === 'failed'" tone="error">Thất bại</LnBadge>
           <LnBadge v-else tone="success">Sẵn sàng</LnBadge>
@@ -643,7 +643,7 @@ function restartQuiz() {
           <b class="font-display text-[1.3125rem] font-bold">{{ detailExam.name }}</b>
           <LnIconBtn @click="detailOpen = false"><LnIcon name="x" :size="20" /></LnIconBtn>
         </div>
-        <div class="text-ink-3 font-body text-[0.8125rem] mb-4">{{ detailExam.type }} · {{ detailQuestions.length }} câu hỏi</div>
+        <div class="text-ink-3 font-body text-[0.8125rem] mb-4">{{ detailExam.type ? `${detailExam.type} · ` : '' }}{{ detailQuestions.length }} câu hỏi</div>
         <div v-if="!detailQuestions.length" class="text-ink-3 font-body text-[0.9375rem] text-center py-6">Đề chưa có câu hỏi nào.</div>
         <div v-else class="flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
           <div v-for="q in detailQuestions" :key="q.id" class="border border-line rounded-lg-ln p-3.5">
