@@ -22,8 +22,8 @@ async function changeLang(code: string) {
 }
 
 // --- Luyện nói (forecast): real mic recording → upload → Gemini band scores ---
+// Silent fallback only — used for grading when no real prompt is selected; not displayed.
 const DEFAULT_PROMPT = 'Describe a skill you want to learn.'
-const DEFAULT_CUES = ['what the skill is', 'how you would learn it', 'why you want to learn it', 'and how it would help you']
 
 // Speaking prompt can come from a random bank question (default), a
 // free-typed question, one of the user's own uploaded "đề", or an exam from
@@ -100,16 +100,15 @@ const qTotalPages = computed(() => Math.max(1, Math.ceil(examQuestions.value.len
 const pagedQuestions = computed(() => examQuestions.value.slice((qPage.value - 1) * QPER, qPage.value * QPER))
 watch(examQuestions, () => { qPage.value = 1 })
 
+// The actual prompt to display — empty when there's no real question, so we
+// never show the English IELTS default (it looks out of place for e.g. Korean).
 const cuePrompt = computed(() => {
   if (promptSrc.value === 'custom')
-    return customPrompt.value.trim() || DEFAULT_PROMPT
-  if (promptSrc.value === 'exam' || promptSrc.value === 'bank') {
-    const q = examQuestions.value.find(q => q.id === selectedQuestionId.value)
-    return q?.prompt || DEFAULT_PROMPT
-  }
-  return randomQuestion.value?.prompt || DEFAULT_PROMPT
+    return customPrompt.value.trim()
+  if (promptSrc.value === 'exam' || promptSrc.value === 'bank')
+    return examQuestions.value.find(q => q.id === selectedQuestionId.value)?.prompt || ''
+  return randomQuestion.value?.prompt || ''
 })
-const cues = computed(() => promptSrc.value === 'default' && !randomQuestion.value ? DEFAULT_CUES : [])
 
 // Sample answer for the current prompt (when it comes from a real question),
 // so the learner can practise against a model response. Hidden until revealed.
@@ -170,7 +169,7 @@ async function submitRecording(blob: Blob) {
   try {
     const fd = new FormData()
     fd.append('audio', blob, 'answer.webm')
-    fd.append('prompt', cues.value.length ? `${cuePrompt.value}\n${cues.value.join('; ')}` : cuePrompt.value)
+    fd.append('prompt', cuePrompt.value || DEFAULT_PROMPT)
     result.value = await $fetch<SpeakingResult>('/api/speaking/grade', { method: 'POST', body: fd })
   }
   catch {
@@ -356,17 +355,19 @@ function speakSample() {
 
       <div class="grid grid-cols-[1.6fr_1fr] gap-4 items-start max-[1040px]:grid-cols-1">
       <div class="ln-cue relative bg-paper-0 border border-line rounded-xl-ln p-6 shadow-card">
-        <div class="text-xs font-extrabold capitalize tracking-[0.12em] text-son">IELTS Speaking · Part 2</div>
-        <div class="font-display text-[1.3125rem] font-bold my-2 mb-3">{{ cuePrompt }}</div>
-        <ul v-if="cues.length" class="m-0 pl-[18px] text-ink-2 font-body text-[0.9375rem] flex flex-col gap-[5px] list-disc">
-          <li v-for="c in cues" :key="c">{{ c }}</li>
-        </ul>
+        <template v-if="cuePrompt">
+          <div class="text-xs font-extrabold capitalize tracking-[0.12em] text-son">Speaking</div>
+          <div class="font-display text-[1.3125rem] font-bold my-2 mb-3">{{ cuePrompt }}</div>
+        </template>
+        <div v-else class="font-display text-[1.3125rem] font-bold my-2 mb-3 text-ink-3">
+          {{ promptSrc === 'custom' ? 'Nhập câu hỏi luyện nói ở trên rồi bắt đầu…' : 'Chọn một câu hỏi để bắt đầu…' }}
+        </div>
         <div v-if="cueSample" class="mt-4">
           <LnBtn variant="ghost" size="sm" :icon="showSample ? 'eye-off' : 'eye'" @click="showSample = !showSample">{{ showSample ? 'Ẩn đáp án mẫu' : 'Xem đáp án mẫu' }}</LnBtn>
           <div v-if="showSample" class="mt-2 bg-paper-2 rounded-md-ln p-3.5 font-body text-[0.9375rem] text-ink-2 whitespace-pre-line">{{ cueSample }}</div>
         </div>
         <div class="flex items-center gap-3.5 mt-6 pt-4 border-t border-line">
-          <button type="button" :disabled="grading" :class="cn('grid place-items-center w-[58px] h-[58px] rounded-full bg-son text-white border-0 cursor-pointer flex-none disabled:opacity-50', rec && 'ln-mic-rec')" @click="toggleRec">
+          <button type="button" :disabled="grading || (!cuePrompt && !rec)" :class="cn('grid place-items-center w-[58px] h-[58px] rounded-full bg-son text-white border-0 cursor-pointer flex-none disabled:opacity-50', rec && 'ln-mic-rec')" @click="toggleRec">
             <LnIcon :name="rec ? 'square' : 'mic'" :size="24" class="text-white" />
           </button>
           <div>
