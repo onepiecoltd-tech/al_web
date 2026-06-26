@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
+import { LANGUAGES } from '~/lib/languages'
 import type { AdminExam, Paginated } from '~/types/api'
 
 const localePath = useLocalePath()
@@ -24,7 +25,7 @@ function fmtDate(iso: string) {
 
 // create (upload card)
 const drop = ref(false)
-const form = reactive({ name: '' })
+const form = reactive({ name: '', language: 'en' })
 const toast = useToast()
 const confirm = useConfirm()
 
@@ -175,7 +176,7 @@ async function update(e: AdminExam, patch: Partial<AdminExam>, opts: { quiet?: b
   try {
     await $fetch(`/api/admin/exams/${e.id}`, {
       method: 'PUT',
-      body: { name: e.name, type: e.type, questions: e.questions, state: e.state, ...patch },
+      body: { name: e.name, type: e.type, language: e.language, questions: e.questions, state: e.state, ...patch },
     })
     await refresh()
     if (!opts.quiet)
@@ -198,10 +199,10 @@ async function remove(e: AdminExam) {
 // edit dialog
 const editOpen = ref(false)
 const editing = ref<AdminExam | null>(null)
-const editForm = reactive({ name: '', type: '', questions: 0, state: 'published' as AdminExam['state'] })
+const editForm = reactive({ name: '', type: '', language: 'en', questions: 0, state: 'published' as AdminExam['state'] })
 function openEdit(e: AdminExam) {
   editing.value = e
-  Object.assign(editForm, { name: e.name, type: e.type, questions: e.questions, state: e.state })
+  Object.assign(editForm, { name: e.name, type: e.type, language: e.language, questions: e.questions, state: e.state })
   editOpen.value = true
 }
 async function saveEdit() {
@@ -302,6 +303,12 @@ async function saveEdit() {
 
       <div class="flex flex-col gap-3 mt-4">
         <LnField v-model="form.name" label="Tên đề" placeholder="VD: Cambridge IELTS 19 — Test 1" />
+        <div class="flex flex-col gap-1.5">
+          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Ngôn ngữ</label>
+          <select v-model="form.language" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] focus:outline-none focus:border-son">
+            <option v-for="l in LANGUAGES" :key="l.code" :value="l.code">{{ l.label }}</option>
+          </select>
+        </div>
         <div class="text-ink-3 text-xs">AI sẽ tự nhận diện kỹ năng (Nghe / Đọc / Viết / Nói) từ tệp tải lên.</div>
         <LnBtn variant="primary" icon="plus" class="w-full" :disabled="creating" @click="create">
           {{ creating ? 'Đang tạo…' : 'Tạo đề' }}
@@ -322,6 +329,12 @@ async function saveEdit() {
           <select v-model="editForm.type" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] focus:outline-none focus:border-son">
             <option value="">— chưa xác định —</option>
             <option v-for="t in examTypes" :key="t" :value="t">{{ t }}</option>
+          </select>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="font-body text-[0.8125rem] font-semibold text-ink-2">Ngôn ngữ</label>
+          <select v-model="editForm.language" class="w-full px-[13px] py-[11px] rounded-md-ln border border-line-strong bg-paper-0 font-body text-[0.9375rem] focus:outline-none focus:border-son">
+            <option v-for="l in LANGUAGES" :key="l.code" :value="l.code">{{ l.label }}</option>
           </select>
         </div>
         <div class="flex flex-col gap-1.5">

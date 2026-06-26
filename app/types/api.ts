@@ -78,6 +78,11 @@ export interface Question {
   created_at: string
 }
 
+export interface AdminQuestion extends Question {
+  exam_name: string
+  language: string
+}
+
 export interface AdminReport {
   id: string
   content: string
