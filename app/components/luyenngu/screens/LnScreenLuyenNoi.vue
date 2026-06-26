@@ -1,9 +1,25 @@
 <script setup lang="ts">
 import { cn } from '~/lib/utils'
-import type { AdminExam, Paginated, Question } from '~/types/api'
+import { LANGUAGES } from '~/lib/languages'
+import type { Question } from '~/types/api'
 
-const mode = ref<'speak' | 'drill'>('speak')
+const mode = ref('speak')
 const toast = useToast()
+
+// --- Ngôn ngữ đang học: lọc câu hỏi luyện nói theo ngôn ngữ. ---
+// Mặc định theo hồ sơ; đổi lựa chọn sẽ lưu lại làm sở thích của người dùng.
+const { me } = useMe()
+const lang = ref(me.value?.learning_language ?? 'en')
+let userPickedLang = false
+watch(me, (m) => {
+  if (!userPickedLang && m?.learning_language)
+    lang.value = m.learning_language
+})
+async function changeLang(code: string) {
+  userPickedLang = true
+  lang.value = code
+  await $fetch('/api/me/language', { method: 'PUT', body: { language: code } }).catch(() => {})
+}
 
 // --- Luyện nói (forecast): real mic recording → upload → Gemini band scores ---
 const DEFAULT_PROMPT = 'Describe a skill you want to learn.'
@@ -29,50 +45,60 @@ async function loadRandomQuestion() {
   }
 }
 await loadRandomQuestion()
-const { data: mineRes } = await useFetch<Paginated<AdminExam>>('/api/exams/mine', {
-  query: { limit: 50 },
-  default: () => ({ data: [], meta: { page: 1, limit: 50, total: 0, total_pages: 0 } }),
-})
-const { data: bankRes } = await useFetch<Paginated<AdminExam>>('/api/exams/bank', {
-  query: { limit: 50 },
-  default: () => ({ data: [], meta: { page: 1, limit: 50, total: 0, total_pages: 0 } }),
-})
-// Only speaking ("Nói") exams make sense as speaking prompts.
-const myExams = computed(() => mineRes.value.data.filter(e => e.type === 'Nói'))
-const bankExams = computed(() => bankRes.value.data.filter(e => e.type === 'Nói'))
-const examOptions = computed(() => promptSrc.value === 'bank' ? bankExams.value : myExams.value)
-const selectedExamId = ref<string | null>(null)
 const examQuestions = ref<Question[]>([])
 const selectedQuestionId = ref<string | null>(null)
 const examQuestionsLoading = ref(false)
 
-watch(selectedExamId, async (id) => {
-  examQuestions.value = []
-  selectedQuestionId.value = null
-  if (!id)
+// Full-text search runs on the server (Postgres ILIKE over prompt + sample
+// answer); we keep the typed term in the URL-free local state and debounce the
+// fetch so each keystroke doesn't hit the backend.
+const qSearch = ref('')
+
+// Pool speaking questions of the chosen source, applying the server-side search.
+// 'exam' → the user's own uploads ("mine"); 'bank' → the shared question bank.
+async function loadSourceQuestions() {
+  if (promptSrc.value !== 'exam' && promptSrc.value !== 'bank') {
+    examQuestions.value = []
+    selectedQuestionId.value = null
     return
+  }
   examQuestionsLoading.value = true
   try {
-    const url = promptSrc.value === 'bank' ? `/api/exams/bank/${id}` : `/api/exams/${id}`
-    const res = await $fetch<{ questions: Question[] }>(url)
+    const res = await $fetch<{ questions: Question[] }>('/api/questions', {
+      query: {
+        skill: 'speaking',
+        source: promptSrc.value === 'bank' ? 'bank' : 'mine',
+        lang: lang.value,
+        q: qSearch.value.trim(),
+        limit: 100,
+      },
+    })
     examQuestions.value = res.questions
-    selectedQuestionId.value = res.questions[0]?.id ?? null
+    if (!examQuestions.value.some(q => q.id === selectedQuestionId.value))
+      selectedQuestionId.value = examQuestions.value[0]?.id ?? null
   }
   catch {
-    toast.err('Không tải được câu hỏi của đề này.')
+    toast.err('Không tải được câu hỏi.')
   }
   finally {
     examQuestionsLoading.value = false
   }
+}
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch([promptSrc, lang], loadSourceQuestions)
+watch(qSearch, () => {
+  if (searchTimer)
+    clearTimeout(searchTimer)
+  searchTimer = setTimeout(loadSourceQuestions, 300)
 })
 
-// Switching between the "đề của bạn" and "ngân hàng" sources clears the
-// current pick so we don't fetch a bank exam id against the mine endpoint.
-watch(promptSrc, () => {
-  selectedExamId.value = null
-  examQuestions.value = []
-  selectedQuestionId.value = null
-})
+// Page through results client-side so long lists stay manageable.
+const QPER = 6
+const qPage = ref(1)
+const qTotalPages = computed(() => Math.max(1, Math.ceil(examQuestions.value.length / QPER)))
+const pagedQuestions = computed(() => examQuestions.value.slice((qPage.value - 1) * QPER, qPage.value * QPER))
+watch(examQuestions, () => { qPage.value = 1 })
 
 const cuePrompt = computed(() => {
   if (promptSrc.value === 'custom')
@@ -84,6 +110,18 @@ const cuePrompt = computed(() => {
   return randomQuestion.value?.prompt || DEFAULT_PROMPT
 })
 const cues = computed(() => promptSrc.value === 'default' && !randomQuestion.value ? DEFAULT_CUES : [])
+
+// Sample answer for the current prompt (when it comes from a real question),
+// so the learner can practise against a model response. Hidden until revealed.
+const cueSample = computed(() => {
+  if (promptSrc.value === 'exam' || promptSrc.value === 'bank')
+    return examQuestions.value.find(q => q.id === selectedQuestionId.value)?.sample_answer || ''
+  if (promptSrc.value === 'default')
+    return randomQuestion.value?.sample_answer || ''
+  return ''
+})
+const showSample = ref(false)
+watch([promptSrc, selectedQuestionId, randomQuestion], () => { showSample.value = false })
 
 interface SpeakingResult { band_overall: number, fluency: number, vocabulary: number, grammar: number, pronunciation: number, feedback: string }
 const rec = ref(false)
@@ -265,8 +303,8 @@ function speakSample() {
 
 <template>
   <div class="flex flex-col gap-5">
-    <div class="flex items-center justify-between">
-      <LnSegment v-model="mode" :options="[{ v: 'speak', label: 'Luyện nói (forecast)' }, { v: 'drill', label: 'Drill phát âm' }]" />
+    <div class="flex items-center justify-between border-b border-line">
+      <LnTabs v-model="mode" :tabs="[{ v: 'speak', label: 'Luyện nói (forecast)' }, { v: 'drill', label: 'Drill phát âm' }]" class="!border-b-0" />
       <LnBadge tone="gold" status>Chấm AI</LnBadge>
     </div>
 
@@ -284,23 +322,35 @@ function speakSample() {
           class="w-full mt-3 bg-paper-2 border border-line rounded-md-ln px-3.5 py-2.5 font-body text-[0.9375rem] text-ink placeholder:text-ink-4 focus:outline-none focus:border-son"
           placeholder="Nhập câu hỏi luyện nói của riêng bạn…"
         >
-        <div v-else-if="promptSrc === 'exam' || promptSrc === 'bank'" class="mt-3 flex flex-col gap-2.5">
-          <select
-            v-model="selectedExamId"
-            class="px-3 py-[7px] rounded-md-ln bg-paper-2 border border-line font-body text-[0.875rem] text-ink focus:outline-none"
-          >
-            <option :value="null" disabled>{{ examOptions.length ? 'Chọn đề…' : (promptSrc === 'bank' ? 'Ngân hàng chưa có đề nói nào' : 'Chưa có đề nào — tải lên ở Luyện đề trước') }}</option>
-            <option v-for="e in examOptions" :key="e.id" :value="e.id">{{ e.name }}</option>
-          </select>
-          <select
-            v-if="selectedExamId"
-            v-model="selectedQuestionId"
-            :disabled="examQuestionsLoading"
-            class="px-3 py-[7px] rounded-md-ln bg-paper-2 border border-line font-body text-[0.875rem] text-ink focus:outline-none"
-          >
-            <option v-if="examQuestionsLoading" :value="null">Đang tải câu hỏi…</option>
-            <option v-for="q in examQuestions" :key="q.id" :value="q.id">{{ q.prompt }}</option>
-          </select>
+        <div v-else-if="promptSrc === 'exam' || promptSrc === 'bank'" class="mt-3 flex flex-col gap-2">
+          <label class="flex items-center gap-2 font-body text-sm">
+            <span class="text-ink-3">Ngôn ngữ đang học:</span>
+            <select
+              :value="lang"
+              class="border border-line rounded-md-ln bg-paper-0 px-2.5 py-1.5 font-body text-sm"
+              @change="changeLang(($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="l in LANGUAGES" :key="l.code" :value="l.code">{{ l.label }}</option>
+            </select>
+          </label>
+          <LnSearch v-model="qSearch" placeholder="Tìm câu hỏi…" class="mb-1" />
+          <div v-if="examQuestionsLoading" class="text-ink-3 font-body text-[0.875rem]">Đang tải câu hỏi…</div>
+          <template v-else-if="examQuestions.length">
+            <button
+              v-for="q in pagedQuestions"
+              :key="q.id"
+              type="button"
+              :class="cn('text-left rounded-md-ln border px-3.5 py-2.5 font-body text-[0.875rem] transition-colors', selectedQuestionId === q.id ? 'border-son bg-son-soft text-ink' : 'border-line bg-paper-0 text-ink-2 hover:bg-paper-2')"
+              @click="selectedQuestionId = q.id"
+            >
+              {{ q.prompt }}
+            </button>
+            <LnPager v-if="qTotalPages > 1" v-model:page="qPage" :total-pages="qTotalPages" :total="examQuestions.length" class="mt-1" />
+          </template>
+          <div v-else-if="qSearch.trim()" class="text-ink-3 font-body text-[0.875rem] py-1">Không tìm thấy câu hỏi phù hợp.</div>
+          <div v-else class="text-ink-3 font-body text-[0.875rem]">
+            {{ promptSrc === 'bank' ? 'Ngân hàng chưa có câu hỏi nói nào.' : 'Chưa có câu hỏi nào — tải đề lên ở Luyện đề trước.' }}
+          </div>
         </div>
       </LnCard>
 
@@ -311,6 +361,10 @@ function speakSample() {
         <ul v-if="cues.length" class="m-0 pl-[18px] text-ink-2 font-body text-[0.9375rem] flex flex-col gap-[5px] list-disc">
           <li v-for="c in cues" :key="c">{{ c }}</li>
         </ul>
+        <div v-if="cueSample" class="mt-4">
+          <LnBtn variant="ghost" size="sm" :icon="showSample ? 'eye-off' : 'eye'" @click="showSample = !showSample">{{ showSample ? 'Ẩn đáp án mẫu' : 'Xem đáp án mẫu' }}</LnBtn>
+          <div v-if="showSample" class="mt-2 bg-paper-2 rounded-md-ln p-3.5 font-body text-[0.9375rem] text-ink-2 whitespace-pre-line">{{ cueSample }}</div>
+        </div>
         <div class="flex items-center gap-3.5 mt-6 pt-4 border-t border-line">
           <button type="button" :disabled="grading" :class="cn('grid place-items-center w-[58px] h-[58px] rounded-full bg-son text-white border-0 cursor-pointer flex-none disabled:opacity-50', rec && 'ln-mic-rec')" @click="toggleRec">
             <LnIcon :name="rec ? 'square' : 'mic'" :size="24" class="text-white" />
